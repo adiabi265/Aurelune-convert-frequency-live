@@ -104,3 +104,19 @@ const I18N = {
     fixBtn: 'Reparieren', restartHint: 'PC neu starten',
   },
 };
+
+// v3.5 – home quick controls
+Object.assign(I18N.en, {
+  details: 'Details – fingerprint, spectrum, levels', customShort: 'Custom',
+  timerT: '⏱ Sleep timer', timerHint: 'Turns Aurelune off automatically', timerOff: 'Off',
+  timerLeft: 'Turns off in {t}', timerSet: '⏱ Sleep timer: {m} min', timerDone: '⏱ Timer finished – Aurelune is off',
+  cymLive: 'Live cymatics: {f} Hz · {note}', cymIdle: 'Cymatics of {f} Hz – starts live when sound plays',
+  keysHint: 'Shortcuts: Space = on/off · ← → = frequency · B = brainwaves',
+});
+Object.assign(I18N.de, {
+  details: 'Details – Fingerabdruck, Spektrum, Pegel', customShort: 'Eigene',
+  timerT: '⏱ Sleep-Timer', timerHint: 'Schaltet Aurelune automatisch aus', timerOff: 'Aus',
+  timerLeft: 'Schaltet ab in {t}', timerSet: '⏱ Sleep-Timer: {m} Min', timerDone: '⏱ Timer abgelaufen – Aurelune ist aus',
+  cymLive: 'Live-Cymatics: {f} Hz · {note}', cymIdle: 'Cymatics von {f} Hz – live, sobald Ton läuft',
+  keysHint: 'Tastenkürzel: Leertaste = an/aus · ← → = Frequenz · B = Gehirnwellen',
+});

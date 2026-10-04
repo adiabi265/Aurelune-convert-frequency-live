@@ -171,3 +171,45 @@ input[type=number] { width:90px; } select { width:100%; }
 .upd-check{border:1px solid rgba(245,185,113,.45);background:transparent;color:var(--acc,#f5b971);border-radius:10px;padding:6px 14px;font:600 12px Segoe UI,sans-serif;cursor:pointer}
 .upd-check:hover:not(:disabled){background:rgba(245,185,113,.12)}
 .upd-check:disabled{opacity:.55;cursor:default}
+
+/* ===== v3.5 – clean home: cymatics orb, quick frequencies, brainwaves, timer ===== */
+.orb-wrap { width:250px; height:250px; margin:8px auto 0; }
+.orb { inset:0; overflow:hidden; background:#05060f; border:1px solid rgba(255,255,255,.08); color:#fff;
+  box-shadow:0 18px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.03); }
+.orb.on { background:#05060f; color:#fff;
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--acc) 55%, transparent), 0 0 46px color-mix(in srgb, var(--acc) 38%, transparent), 0 0 110px rgba(90,110,255,.22); }
+.orb-hz, .orb.on .orb-hz { text-shadow:0 2px 14px rgba(0,0,0,.95), 0 0 3px rgba(0,0,0,.9); }
+.orb-unit, .orb-cap, .orb-state { text-shadow:0 1px 8px rgba(0,0,0,.95); opacity:.9; }
+.orb::after { content:''; position:absolute; inset:28%; border-radius:50%; background:radial-gradient(circle, rgba(3,4,12,.55), transparent 70%); pointer-events:none; z-index:0; }
+.freq-pill { margin-top:12px; padding:6px 14px; font-size:12.5px; }
+.fchips { display:flex; gap:7px; overflow-x:auto; margin:12px -18px 0; padding:4px 18px 8px; scroll-snap-type:x proximity; scrollbar-width:none; }
+.fchips::-webkit-scrollbar { display:none; }
+.fchip { flex:none; scroll-snap-align:center; display:flex; flex-direction:column; align-items:center; gap:0; min-width:68px; padding:8px 9px 7px; border-radius:14px;
+  background:var(--card); border:1px solid var(--line); color:var(--fg); font:inherit; cursor:pointer; transition:border-color .2s, background .2s, transform .15s; }
+.fchip:hover { transform:translateY(-1px); border-color:color-mix(in srgb, var(--c) 55%, transparent); }
+.fchip .e { font-size:16px; line-height:1.2; } .fchip b { font-size:14px; font-variant-numeric:tabular-nums; }
+.fchip small { font-size:9.5px; color:var(--mut); white-space:nowrap; max-width:74px; overflow:hidden; text-overflow:ellipsis; }
+.fchip.sel { border-color:var(--c); background:color-mix(in srgb, var(--c) 18%, transparent); box-shadow:0 0 16px color-mix(in srgb, var(--c) 25%, transparent); }
+.fchip.sel small { color:var(--fg); }
+.quick-custom { display:flex; gap:8px; align-items:center; justify-content:center; margin-top:6px; }
+.fdesc-line { text-align:center; font-size:12px; color:var(--mut); margin:4px 8px 0; min-height:34px; }
+.bin-head { display:flex; align-items:center; gap:10px; }
+.bin-head > div:first-child { flex:1; min-width:0; }
+.bin-head b { display:block; font-size:13px; } .bin-head small { display:block; color:var(--mut); font-size:11.5px; margin-top:1px; }
+.seg.four { grid-template-columns:1fr 1fr; margin-top:10px; }
+.seg.four button { padding:7px 6px; font-size:12.5px; }
+.bin .bin-more { display:none; } .bin.on .bin-more { display:block; animation:fade .3s ease; }
+.bin.on { border-color:rgba(139,108,255,.35); box-shadow:0 0 30px rgba(139,108,255,.08); }
+.card.slim { padding:11px 15px; }
+.timer-seg { grid-template-columns:repeat(5, auto); margin-top:0; }
+.timer-seg button { padding:5px 9px; }
+details.more { margin-top:10px; }
+details.more > summary { list-style:none; cursor:pointer; font-size:12px; font-weight:600; color:var(--mut); padding:6px 0 2px; display:flex; align-items:center; gap:6px; }
+details.more > summary::-webkit-details-marker { display:none; }
+details.more > summary::before { content:'›'; display:inline-block; font-size:15px; transition:transform .2s; }
+details.more[open] > summary::before { transform:rotate(90deg); }
+details.more > summary:hover { color:var(--fg); }
+.keys-hint { font-size:11px; color:var(--mut); text-align:center; margin:14px 0 0; }
+.cym-line { text-align:center; margin-top:10px; font-size:11.5px; font-weight:600; color:var(--mut); font-variant-numeric:tabular-nums; letter-spacing:.2px; }
+.cym-line.live { color:#b9c4ff; } .cym-line.live::before { content:''; display:inline-block; width:6px; height:6px; border-radius:50%; background:#8fa0ff; box-shadow:0 0 8px #8fa0ff; margin-right:6px; vertical-align:middle; animation:pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity:.35; } }

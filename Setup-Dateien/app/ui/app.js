@@ -51,6 +51,7 @@ async function setLang(l) { lang = l === 'de' ? 'de' : 'en'; applyLang(); await 
 
 // ---------- frequencies ----------
 function buildList() {
+  buildChips();
   const list = $('freqList'); list.innerHTML = '';
   FREQUENCIES.forEach((f) => {
     const p = presetFor(f.hz), tu = tuningFor(f.hz, 440, lang);
@@ -73,6 +74,7 @@ function renderSettings() {
   const p = presetFor(ui.presetHz || 432);
   document.documentElement.style.setProperty('--acc', p.color);
   document.querySelectorAll('.fitem').forEach((c) => c.classList.toggle('sel', Number(c.dataset.hz) === p.hz));
+  renderChips(p);
   if (!status.running) $('orbHz').textContent = p.hz;
   $('pillEmoji').textContent = p.emoji; $('pillName').textContent = `${p.name} · ${p.tag}`;
   $('auto').checked = !!settings.auto; $('manualRow').hidden = !!settings.auto; $('manualRef').value = settings.manual_ref;
@@ -145,20 +147,6 @@ const SPEC_MIN = 40, SPEC_MAX = 12000;
 let specOut = new Float32Array(240), specIn = new Float32Array(240), histOut = new Float32Array(100), histIn = new Float32Array(100), ph = 0;
 function ease(arr, src, k) { if (!src) { for (let i = 0; i < arr.length; i++) arr[i] *= 0.9; return; } for (let i = 0; i < arr.length; i++) arr[i] += ((src[i] || 0) / 255 - arr[i]) * k; }
 function accent() { return getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#f5b971'; }
-function drawOrb(x, W, col, on) {
-  const R = W / 2, inner = 206, n = 120;
-  x.clearRect(0, 0, W, W);
-  x.save(); x.translate(R, R);
-  for (let i = 0; i < n; i++) {
-    const band = Math.floor((i < n / 2 ? i : n - 1 - i) * (200 / (n / 2)));   // mirrored, low freq at top
-    const v = on ? specOut[band] : 0;
-    const len = 4 + Math.pow(Math.max(0, v - 0.18) / 0.82, 1.6) * 120 + (on ? 0 : 2 * Math.sin(ph * 2 + i * 0.3) + 2);
-    const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
-    x.strokeStyle = col; x.globalAlpha = on ? 0.35 + 0.65 * v : 0.18; x.lineWidth = 6; x.lineCap = 'round';
-    x.beginPath(); x.moveTo(Math.cos(a) * inner, Math.sin(a) * inner); x.lineTo(Math.cos(a) * (inner + len), Math.sin(a) * (inner + len)); x.stroke();
-  }
-  x.restore(); x.globalAlpha = 1;
-}
 const xOf = (f, W) => Math.log(f / SPEC_MIN) / Math.log(SPEC_MAX / SPEC_MIN) * W;
 function drawSpec(c, col) {
   const x = c.getContext('2d'), W = c.width, H = c.height, s = status, p = presetFor(ui.presetHz || 432);
@@ -204,14 +192,13 @@ function drawFp(c, col) {
   curve(histOut); x.globalAlpha = 1; x.strokeStyle = col; x.lineWidth = 2.6; x.stroke();
 }
 function animate() {
-  const oc = $('orbCanvas').getContext('2d'), sc = $('spec'), fc = $('fp');
+  const sc = $('spec'), fc = $('fp');
   const frame = () => {
     const on = status.running, col = accent();
     ease(specOut, on ? status.spec_out : null, 0.35); ease(specIn, on ? status.spec_in : null, 0.35);
     ease(histOut, on ? status.hist_out : null, 0.2); ease(histIn, on ? status.hist_in : null, 0.2);
-    drawOrb(oc, oc.canvas.width, col, on && !status.silent);
     drawCymatics(on);
-    if ($('view-home').classList.contains('active')) { drawSpec(sc, col); drawFp(fc, col); }
+    if ($('view-home').classList.contains('active') && $('proofMore').open) { drawSpec(sc, col); drawFp(fc, col); }
     ph += 0.02; requestAnimationFrame(frame);
   };
   frame();
@@ -324,7 +311,14 @@ function wire() {
   const ab = $('ab');
   const hold = (v) => { if (ab.disabled || abHeld === v) return; abHeld = v; ab.classList.toggle('held', v); ab.textContent = v ? t('abHeld') : t('abIdle'); call('bypass', v); };
   ab.addEventListener('pointerdown', () => hold(true)); ['pointerup', 'pointerleave', 'pointercancel'].forEach((e) => ab.addEventListener(e, () => hold(false)));
-  document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !['INPUT', 'SELECT'].includes(e.target.tagName)) { e.preventDefault(); togglePower(); } });
+  document.addEventListener('keydown', (e) => {
+    if (['INPUT', 'SELECT'].includes(e.target.tagName) || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.code === 'Space') { e.preventDefault(); togglePower(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); stepPreset(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); stepPreset(-1); }
+    else if (e.key === 'b' || e.key === 'B') setS({ binaural: !settings.binaural });
+  });
+  wireHome();
 }
 
 async function start() {
@@ -373,6 +367,7 @@ function renderBinaural() {
     const sm = document.createElement('small'); sm.textContent = `${fmt(car[i], 0)} Hz`; s.appendChild(sm); box.appendChild(s);
   });
   box.classList.toggle('on', !!settings.binaural);
+  $('binCard').classList.toggle('on', !!settings.binaural);
   if (document.activeElement !== $('binLevel')) $('binLevel').value = Math.round((settings.bin_level ?? 0.2) * 100);
   if (document.activeElement !== $('binNoise')) $('binNoise').value = Math.round((settings.bin_noise ?? 0.3) * 100);
   $('binLevelV').textContent = `${$('binLevel').value} %`; $('binNoiseV').textContent = `${$('binNoise').value} %`;
@@ -397,75 +392,169 @@ function wireBinaural() {
   $('binNoise').onchange = () => setS({ bin_noise: Number($('binNoise').value) / 100 });
 }
 
-// ---------- cymatics: Chladni plate driven by the live dominant frequency ----------
+// ---------- home: quick frequency chips, sleep timer ----------
+var lastChipHz = null;  // var: used by wire()/applyLang() before this line runs
+function buildChips() {
+  const box = $('freqChips'); if (!box) return; box.innerHTML = '';
+  FREQUENCIES.forEach((f) => {
+    const p = presetFor(f.hz), b = document.createElement('button');
+    b.className = 'fchip'; b.dataset.hz = f.hz; b.style.setProperty('--c', f.color); b.title = `${p.name} · ${p.tag}`;
+    b.innerHTML = '<span class="e"></span><b></b><small></small>';
+    b.querySelector('.e').textContent = f.emoji; b.querySelector('b').textContent = f.hz; b.querySelector('small').textContent = p.name;
+    b.onclick = () => choose(f.hz);
+    box.appendChild(b);
+  });
+  const c = document.createElement('button');
+  c.className = 'fchip add'; c.id = 'chipCustom'; c.style.setProperty('--c', '#9fd3c7');
+  c.innerHTML = '<span class="e">🎚️</span><b>Hz</b><small></small>'; c.querySelector('small').textContent = t('customShort');
+  c.onclick = () => { const q = $('quickCustom'); q.hidden = !q.hidden; if (!q.hidden) { $('qCustom').value = ui.presetHz || ''; $('qCustom').focus(); } };
+  box.appendChild(c);
+  lastChipHz = null;
+}
+function renderChips(p) {
+  const box = $('freqChips'); if (!box) return;
+  let any = false;
+  box.querySelectorAll('.fchip[data-hz]').forEach((c) => { const s = Number(c.dataset.hz) === p.hz; c.classList.toggle('sel', s); any = any || s; });
+  const cc = $('chipCustom');
+  if (cc) { cc.classList.toggle('sel', !any); cc.querySelector('b').textContent = any ? 'Hz' : fmt(p.hz, p.hz % 1 ? 1 : 0); }
+  $('freqDescLine').textContent = p.desc || '';
+  if (lastChipHz !== p.hz) {
+    lastChipHz = p.hz;
+    const sel = box.querySelector('.fchip.sel');
+    if (sel) box.scrollTo({ left: sel.offsetLeft - box.clientWidth / 2 + sel.offsetWidth / 2, behavior: 'smooth' });
+  }
+}
+function stepPreset(d) {
+  const L = FREQUENCIES.map((f) => f.hz); let i = L.indexOf(Number(ui.presetHz));
+  i = i < 0 ? 0 : (i + d + L.length) % L.length;
+  const f = FREQUENCIES[i]; choose(f.hz); toast(`${f.emoji} ${f.hz} Hz · ${presetFor(f.hz).name}`);
+}
+var timerEnd = 0, timerMin = 0;
+function setTimer(min) {
+  timerMin = min; timerEnd = min ? Date.now() + min * 60000 : 0;
+  renderTimer(); if (min) toast(t('timerSet', { m: min }));
+}
+function renderTimer() {
+  document.querySelectorAll('#timerSeg button').forEach((b) => b.classList.toggle('sel', Number(b.dataset.v) === timerMin));
+  const h = $('timerHint'); if (!h) return;
+  if (timerEnd) { const s = Math.max(0, Math.round((timerEnd - Date.now()) / 1000)); h.textContent = t('timerLeft', { t: `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }); }
+  else h.textContent = t('timerHint');
+}
+async function finishTimer() {
+  const hadBin = !!settings.binaural;
+  if (hadBin) await setS({ binaural: false });          // 2 s fade-out of the layers first
+  setTimeout(async () => { if (status.running) await togglePower(); toast(t('timerDone')); }, hadBin ? 2500 : 0);
+}
+setInterval(() => { if (!timerEnd) return; if (Date.now() >= timerEnd) { timerEnd = 0; timerMin = 0; finishTimer(); } renderTimer(); }, 1000);
+function wireHome() {
+  const box = $('freqChips');
+  box.addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { box.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+  const go = () => { const v = parseFloat(String($('qCustom').value).replace(',', '.')); if (v >= 20 && v <= 2000) { choose(Math.round(v * 10) / 10); $('quickCustom').hidden = true; toast(`🎚️ ${fmt(v)} Hz`); } };
+  $('qCustomGo').onclick = go; $('qCustom').onkeydown = (e) => e.key === 'Enter' && go();
+  document.querySelectorAll('#timerSeg button').forEach((b) => (b.onclick = () => setTimer(Number(b.dataset.v))));
+  const more = $('proofMore');
+  more.open = localStorage.getItem('proofOpen') === '1';
+  more.addEventListener('toggle', () => localStorage.setItem('proofOpen', more.open ? '1' : '0'));
+  renderTimer();
+}
+
+// ---------- cymatics: LIVE standing-wave pattern of the frequency you hear right now (CymaScope style, WebGL) ----------
 const CYM = { ready: false };
+function cymParams(f) {
+  if (!(f > 0)) f = 432;
+  const x = 12 * Math.log2(f / 432), n = Math.round(x), pc = ((n % 12) + 12) % 12, oct = Math.max(-3, Math.min(3, Math.floor(n / 12)));
+  const SYM = [6, 8, 10, 7, 12, 9, 5, 11, 8, 10, 6, 12];
+  return [SYM[pc], 17 + pc * 1.1 + oct * 2.2 + (x - n) * 0.8, 5 + ((pc * 5) % 7) + Math.max(0, oct + 2)];
+}
+const CYM_VS = 'attribute vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }';
+const CYM_FS = `precision highp float;
+uniform vec2 R; uniform float T; uniform vec3 A; uniform vec3 B; uniform float MIX; uniform float E; uniform vec3 TINT; uniform float ON;
+float field(vec2 p, vec3 P) {
+  float N = P.x, k = P.y, r = length(p), th = atan(p.y, p.x) + T * 0.012;
+  float q = 0.0, q2 = 0.0;
+  for (int j = 0; j < 12; j++) {
+    if (float(j) >= N) break;
+    float a = 3.14159265 * float(j) / N;
+    float x = r * cos(a - th);
+    q += cos(k * x + T * 0.35);
+    q2 += cos(k * 0.5 * r * cos(a - th + 3.14159265 / (2.0 * N)) - T * 0.2);
+  }
+  q /= N; q2 /= N;
+  float ring = cos(P.z * 3.14159265 * r - T * 0.5);
+  float petals = cos(N * th) * cos(P.z * 1.5707963 * r + 0.6);
+  float petals2 = cos(2.0 * N * th + 1.0) * sin(P.z * 3.14159265 * r * 0.75 - T * 0.3) * smoothstep(0.15, 0.6, r);
+  return 0.17 * q + 0.07 * q2 + 0.3 * ring * (1.0 - 0.35 * r) + 0.32 * petals + 0.22 * petals2;
+}
+void main() {
+  vec2 p = (gl_FragCoord.xy / R) * 2.0 - 1.0;
+  float r = length(p);
+  if (r > 1.0) { gl_FragColor = vec4(0.0); return; }
+  float u = mix(field(p, B), field(p, A), MIX);
+  float line = exp(-u * u * 160.0);
+  float glow = exp(-u * u * 18.0);
+  float crest = smoothstep(0.32, 0.8, u);
+  vec3 deep = vec3(0.01, 0.014, 0.06), mid = vec3(0.10, 0.14, 0.55), hi = vec3(0.80, 0.86, 1.0);
+  vec3 c = deep + mid * (glow * 0.55 + crest * 0.5);
+  c += hi * (line * 0.75 + crest * 0.55) * E;
+  c = mix(c, c * TINT * 1.7, 0.18);
+  float vig = smoothstep(1.03, 0.45, r);
+  float rim = exp(-pow((r - 0.968) * 38.0, 2.0));
+  c *= (0.35 + 0.65 * vig) * (0.62 + 0.38 * ON);
+  c += mix(hi, TINT, 0.5) * rim * (0.28 + 0.3 * ON);
+  float al = smoothstep(1.0, 0.985, r);
+  gl_FragColor = vec4(c * al, al);
+}`;
 function cymInit() {
-  const M = 11, XN = 3200, XMAX = 42, dx = XMAX / (XN - 1), T = 96, J = [];
-  for (let m = 0; m < M; m++) {        // Bessel J_m(x) via its integral form (trapezoid, spectrally accurate)
-    const a = new Float32Array(XN);
-    for (let i = 0; i < XN; i++) {
-      const x = i * dx; let s = 0;
-      for (let k = 0; k <= T; k++) { const tau = Math.PI * k / T; s += (k === 0 || k === T ? 0.5 : 1) * Math.cos(m * tau - x * Math.sin(tau)); }
-      a[i] = s / T;
-    }
-    J.push(a);
-  }
-  const modes = [];
-  for (let m = 0; m < M; m++) {        // eigenmodes of a circular plate with nodal rim: k = n-th zero of J_m
-    const a = J[m]; let n = 0;
-    for (let i = 2; i < XN && n < 7; i++) {
-      if ((a[i - 1] < 0) !== (a[i] < 0)) {
-        const k = (i - 1 + a[i - 1] / (a[i - 1] - a[i])) * dx; n++;
-        if (k > 36) break;
-        let mx = 0; for (let j = 0; j * dx <= k; j++) mx = Math.max(mx, Math.abs(a[j]));
-        modes.push({ m, n, k, norm: mx || 1 });
-      }
-    }
-  }
-  modes.sort((p, q) => p.k - q.k);
-  const ref = modes.find((d) => d.m === 6 && d.n === 3) || modes[Math.floor(modes.length / 2)];
-  const P = 2400, px = new Float32Array(P), py = new Float32Array(P);
-  for (let i = 0; i < P; i++) { const r = Math.sqrt(Math.random()) * 0.98, a = Math.random() * Math.PI * 2; px[i] = r * Math.cos(a); py[i] = r * Math.sin(a); }
-  Object.assign(CYM, { ready: true, J, dx, XN, modes, C: 432 / (ref.k * ref.k), P, px, py, cur: ref, prev: ref, mix: 1, cand: ref, candT: 0, last: performance.now() });
+  CYM.ready = true; CYM.cur = cymParams(432); CYM.prev = CYM.cur; CYM.mix = 1;
+  CYM.t = Math.random() * 100; CYM.e = 0.45; CYM.on = 0; CYM.last = performance.now();
+  const cv = $('cymCanvas'); CYM.gl = null; if (!cv) return;
+  try {
+    const gl = cv.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false });
+    if (!gl) throw new Error('no webgl');
+    const sh = (ty, src) => { const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, CYM_VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, CYM_FS));
+    gl.linkProgram(pr); if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    gl.useProgram(pr);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    CYM.u = {}; ['R', 'T', 'A', 'B', 'MIX', 'E', 'TINT', 'ON'].forEach((n) => (CYM.u[n] = gl.getUniformLocation(pr, n)));
+    CYM.gl = gl;
+  } catch (e) { console.warn('cymatics: WebGL unavailable', e); }
 }
-function cymMode(f) {
-  while (f > 1500) f /= 2;
-  while (f < 60) f *= 2;
-  const kt = Math.sqrt(f / CYM.C); let best = CYM.modes[0];
-  for (const d of CYM.modes) if (Math.abs(d.k - kt) < Math.abs(best.k - kt)) best = d;
-  return best;
-}
-function cymField(d, r, c, s) {      // J_m(k r) cos(m theta), normalised; c/s = cos/sin(theta)
-  const xi = d.k * r / CYM.dx, i = Math.min(CYM.XN - 2, xi | 0), fr = xi - i, a = CYM.J[d.m];
-  let cm = 1, sm = 0;
-  for (let j = 0; j < d.m; j++) { const t = cm * c - sm * s; sm = sm * c + cm * s; cm = t; }
-  return (a[i] + (a[i + 1] - a[i]) * fr) * cm / d.norm;
-}
+function hexRgb(h) { const m = /^#?([0-9a-f]{6})$/i.exec(String(h).trim()); if (!m) return [0.96, 0.73, 0.44]; const v = parseInt(m[1], 16); return [(v >> 16 & 255) / 255, (v >> 8 & 255) / 255, (v & 255) / 255]; }
 function drawCymatics(on) {
-  const cv = $('cymCanvas'); if (!cv) return;
   if (!CYM.ready) cymInit();
+  const gl = CYM.gl;
   const now = performance.now(), dt = Math.min(0.1, (now - CYM.last) / 1000); CYM.last = now;
-  const live = on && status.running && !status.silent && status.peak_out > 0;
+  // LIVE: the dominant frequency measured in what you hear right now; idle: the chosen frequency
+  const live = on && !status.silent && status.peak_out > 20;
   const f = live ? status.peak_out : presetFor(ui.presetHz || 432).hz;
-  const want = cymMode(f);
-  if (want !== CYM.cand) { CYM.cand = want; CYM.candT = now; }
-  if (CYM.cand !== CYM.cur && now - CYM.candT > 300 && CYM.mix >= 1) { CYM.prev = CYM.cur; CYM.cur = CYM.cand; CYM.mix = 0; }
-  CYM.mix = Math.min(1, CYM.mix + dt / 0.8);
-  const energy = live ? 0.35 + 0.65 * Math.min(1, (status.level_out || 0) * 1.5) : 0.22;
-  const { P, px, py, prev, cur, mix } = CYM;
-  for (let i = 0; i < P; i++) {
-    let x = px[i], y = py[i];
-    const r = Math.sqrt(x * x + y * y) || 1e-6, c = x / r, s = y / r;
-    let u = cymField(cur, r, c, s);
-    if (mix < 1) u = u * mix + cymField(prev, r, c, s) * (1 - mix);
-    const st = (0.045 * Math.pow(Math.abs(u), 0.9) + 0.0006) * energy * dt * 60;
-    x += (Math.random() - 0.5) * 2 * st; y += (Math.random() - 0.5) * 2 * st;
-    const rr = x * x + y * y; if (rr > 0.98) { const q = 0.99 / Math.sqrt(rr); x *= q; y *= q; }
-    px[i] = x; py[i] = y;
+  const note = Math.round(12 * Math.log2(f / 432));
+  if (note !== CYM.candNote) { CYM.candNote = note; CYM.candT = now; CYM.candF = f; }
+  else CYM.candF += (f - CYM.candF) * Math.min(1, dt * 8);
+  if (CYM.note === undefined) { CYM.note = note; CYM.cur = cymParams(f); CYM.prev = CYM.cur; }
+  if (note !== CYM.note && now - CYM.candT > (live ? 160 : 0)) {          // new tone held long enough -> morph to its pattern
+    CYM.note = note; CYM.prev = CYM.cur; CYM.cur = cymParams(CYM.candF); CYM.mix = 0;
+  } else if (note === CYM.note && CYM.mix >= 1) CYM.cur = cymParams(CYM.candF);   // same tone: follow fine pitch live
+  CYM.mix = Math.min(1, CYM.mix + dt / (live ? 0.4 : 1.1));
+  CYM.f = CYM.candF; CYM.live = live;
+  if (now - (CYM.lt || 0) > 180) {
+    CYM.lt = now; const el = $('cymLine');
+    if (el) {
+      const a4 = status.expected_a4 || settings.target_a4 || 432, n = Math.round(12 * Math.log2(CYM.f / a4));
+      el.textContent = live ? t('cymLive', { f: fmt(CYM.f, 1), note: noteName(n, lang) }) : t('cymIdle', { f: fmt(CYM.f, CYM.f % 1 ? 1 : 0) });
+      el.classList.toggle('live', live);
+    }
   }
-  const g = cv.getContext('2d'), W = cv.width, h = W / 2;
-  g.clearRect(0, 0, W, W);
-  g.fillStyle = on ? '#1a1222' : accent(); g.globalAlpha = on ? 0.42 : 0.3;
-  for (let i = 0; i < P; i++) g.fillRect(h + px[i] * h - 1, h + py[i] * h - 1, 2.2, 2.2);
-  g.globalAlpha = 1;
+  if (!gl) return;
+  const eT = live ? 0.75 + 0.75 * Math.min(1, (status.level_out || 0) * 1.6) : on ? 0.6 : 0.5;
+  CYM.e += (eT - CYM.e) * Math.min(1, dt * 5);
+  CYM.on += ((on ? 1 : 0) - CYM.on) * Math.min(1, dt * 2.5);
+  CYM.t += dt * (live ? 1 : 0.35);
+  const W = gl.canvas.width, H = gl.canvas.height, m = CYM.mix * CYM.mix * (3 - 2 * CYM.mix), u = CYM.u;
+  gl.viewport(0, 0, W, H); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.uniform2f(u.R, W, H); gl.uniform1f(u.T, CYM.t); gl.uniform3fv(u.A, CYM.cur); gl.uniform3fv(u.B, CYM.prev);
+  gl.uniform1f(u.MIX, m); gl.uniform1f(u.E, CYM.e); gl.uniform3fv(u.TINT, hexRgb(accent())); gl.uniform1f(u.ON, CYM.on);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
