@@ -4,7 +4,7 @@
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.15.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.16.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---
@@ -134,6 +134,18 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 - Ehrlich: Monroe veröffentlicht die genauen Hemi-Sync-Mischungen nicht; Abschnitte folgen den veröffentlichten Bereichen. Wirkung nicht garantiert, kein Medizinprodukt (steht so auch in der App).
 - Getestet (Sandbox): Frequenzen per FFT exakt (z. B. 107,25 / 108,75 Hz bei Delta 1,5), Skip ohne Knacken, ~0,3 ms CPU pro 21-ms-Block, API-Abläufe (Pause/Weiter/Skip/Seek/Sitzung/Schichten), UI ohne JS-Fehler.
 
+## 3e. UI-Redesign (seit 3.16, `ui/v316.css` + `ui/v316.js`)
+
+- `v316.css` definiert Design-Tokens (`--bg-app`, `--bg-surface`, `--text-*`, `--accent-gold`, `--accent-violet` …) und mappt die alten Variablen (`--bg`, `--card`, `--acc` …) darauf → alle älteren Dateien folgen automatisch. Ein Button-System (`.btn` = Primär gold, `.btn.ghost`/`.btn-secondary`, `.btn-ghost`, `.btn-icon`), Buttons nie mehr 100 % breit, Segmented Controls (`.seg`) inhaltsbreit, Slider max. ~300 px, Selects max. 620 px.
+- `v316.js` **verschiebt nur** vorhandene Elemente (alle IDs/Events bleiben): Seitenköpfe (`.page-header`), Sidebar-Fuß mit DE/EN-Umschalter (`#langSeg2`, ruft `setLang`) + kompakter Statuszeile (`#chip`).
+  - **Live**: Orb 290 px, Button „Aurelune starten/stoppen“ (`#powerBtn` → klickt `#orb`), Box „Zielfrequenz“ mit nur 432/528/963/Eigene (+ gewählte), „Alle Frequenzen ›“; Karte „Live-Messung“ mit Leerzustand (`#measEmpty`); Gehirnwellen kompakt (Zusammenfassung `#binSum`, Rest in `<details id="binAdv">` „Anpassen“).
+  - **Frequenzen**: Filter Alle/Solfeggio/Stimmungen (`#freqFilter`, CSS über `data-filter`), Raster 3/2/1 Spalten.
+  - **Playlists**: zweispaltig (`#plLayout`: Liste links, Player rechts), Erklärung in „Wie funktioniert das?“.
+  - **Wellness**: Unterreiter (`#wellNav`): Sitzungen (+40 Hz/Licht) · Fokus & Atmung (+Takt) · Schlaf & Raumklang · Routinen & Schutz (+Klangschalen). Gewählter Reiter in `localStorage aur.wellPane`.
+  - **Einstellungen**: Unterreiter (`#setNav`): Audio · Verarbeitung (Auto-Stimmung, Profil, 432-Lock, Low Latency) · App (Sprache, Autostart, Tray, Updates, Fenster) · Diagnose (Key-Value-Liste `#diagKV`, Log öffnen, Diagnose kopieren).
+- Responsive: ≤1179 px 2-Spalten-Raster, ≤1100 px Live einspaltig, ≤900 px alles einspaltig; `prefers-reduced-motion` schaltet Animationen ab; `:focus-visible` 2 px gold.
+- QA (Sandbox, Mock-API): 1160×780, 1366×768, 1024×700, 820×700, Mini-Player, DE + EN – keine JS-Fehler, keine horizontale Scrollbar, keine Buttons > 430 px; Klicktests für Frequenz, Eigene, Filter, Presets, Schichten, Sprache, Playlists, Naturklänge, Sitzung, Routinen, Klangschalen, Resonanz, Updates, Diagnose, Log, Profil.
+
 ## 4. Dateien (Studio)
 
 | Datei | Inhalt |
@@ -148,7 +160,7 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 | `updater.py` | In-App-Updates von GitHub (`version.txt` vergleichen, ZIP laden, `installer/update.ps1` starten) |
 | `version.txt`, `CHANGELOG.txt` | Version + Änderungen (die App liest beide von GitHub!) |
 | `ui/index.html`, `app.js`, `style.css`, `desk.css`, `i18n.js`, `frequencies.js`, `update.js` | Oberfläche |
-| `ui/v38.js`, `v39.js`, `v310.js`, `v311.js`, `v312.js` (+ `v38.css`, `v311.css`, `v312.css`) | Versions-Patches für die UI (Texte, neue Bedienelemente) – werden nach `app.js` geladen |
+| `ui/v38.js` … `v316.js` (+ `v38.css` … `v316.css`; v314 = Wellness, v315 = Brainwave-Player, v316 = Redesign) | Versions-Patches für die UI (Texte, neue Bedienelemente) – werden nach `app.js` geladen |
 | `Setup-Dateien/installer/*.ps1` | Setup (Python, WebView2, VB-CABLE), Update, Deinstallation |
 | `Setup-Dateien/installer/autoupdate.ps1` + `.vbs` | Hintergrund-Updater (seit 3.13): startet unsichtbar bei der Windows-Anmeldung (HKCU Run `AureluneStudioUpdater`), prüft alle 3 min `version.txt` auf GitHub und startet `update.ps1 -Background` |
 | `Setup-Dateien/installer/SetupStub.cs` | Quelltext der `Aurelune-Studio-Setup.exe` (Online-Setup, Build-Befehl steht im Kopf der Datei) |
@@ -204,6 +216,7 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 
 ## 8. Versionsverlauf (Kurz)
 
+- **3.16.0** – UI-Redesign: Design-Tokens, ruhigere Flächen, ein Button-System, kompakte Live-Ansicht (Start-Button, Zielfrequenz-Box, Live-Messung mit Leerzustand, Gehirnwellen einklappbar), Frequenz-Filter, Playlists zweispaltig, Wellness- und Einstellungs-Unterreiter, Diagnose-Liste, DE/EN-Umschalter in der Seitenleiste, Barrierefreiheit (Fokus, reduzierte Bewegung).
 - **3.15.0** – Brainwave-Player wie Spotify (⏮ ▶/⏸ ⏭, Fortschritt, Lautstärke; ein Play-Knopf für Reise/Sitzung/Schichten/Takt), Reiter „Meditation“ mit Gateway-Reisen (7 Schichten, Isochron + Binaural auf derselben Zielfrequenz, Brandung) und Live-Frequenz-Tabelle.
 - **3.14.0** – Wellness-Reiter: Sitzungen mit Ablauf, Fokus-Modulation, Atem-Coach + Resonanz-Test, Isochron/Monaural, 40 Hz + Licht-Flackern, Tiefschlaf-Rauschen, 8D, Klangschalen/Gongs, Tagesroutinen, Gehörschutz; 3D-Cymatics-Vollbild, Mini-Player, Tray, Medientasten, Song-Zeile 440 → 432, Low-Latency.
 
@@ -223,7 +236,7 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 Erledigt in 3.14: Abläufe mit Frequenzverlauf, Isochron/Monaural, 40 Hz, braunes Rauschen, Klangschalen, Sleep mit Ausblenden.
 Bewusst **nicht** gebaut (Adrians Wunsch): Wirkungs-Tagebuch.
 
-1. 3.15 auf Adrians PC prüfen: Player-Leiste, Gateway-Reise mit Kopfhörern, Medientasten. 3.14 prüfen: Tray (pystray), Mini-Player-Größe, Medientasten in WebView2, 8D-Klang mit echter Musik.
+1. 3.16-Redesign im echten WebView2-Fenster ansehen (Abstände, Schrift). 3.15 auf Adrians PC prüfen: Player-Leiste, Gateway-Reise mit Kopfhörern, Medientasten. 3.14 prüfen: Tray (pystray), Mini-Player-Größe, Medientasten in WebView2, 8D-Klang mit echter Musik.
 2. **Eigener Mix**: Beats/Träger/Anzahl frei wählen und speichern; eigene Sitzungen bauen.
 3. Gehirnwellen + Sitzungen in die Mobile-App (Web Audio).
 4. Lizenz-Geheimwort der Mobile-App ändern (siehe oben).
