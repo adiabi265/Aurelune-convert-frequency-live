@@ -1,0 +1,8 @@
+.lock-seg { grid-template-columns:repeat(2,1fr); }
+#binSeg button[data-v="septa"] { grid-column:1 / -1; }
+.bin-count { margin-top:10px; }
+.bin-count > label { font-size:12.5px; opacity:.8; }
+.count-seg { grid-template-columns:repeat(6,1fr); margin-top:6px; }
+.count-seg button { padding:6px 4px; font-size:12.5px; }
+.bin-layers.many span { font-size:11px; padding:3px 6px; }
+.bin-layers.many small { font-size:9.5px; }

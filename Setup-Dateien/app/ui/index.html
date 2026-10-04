@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Aurelune Studio</title><link rel="icon" href="icon.png" type="image/png"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="desk.css"><link rel="stylesheet" href="v38.css"></head>
+<title>Aurelune Studio</title><link rel="icon" href="icon.png" type="image/png"><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="desk.css"><link rel="stylesheet" href="v38.css"><link rel="stylesheet" href="v311.css"></head>
 <body>
 <div class="aurora"></div>
 <div id="oldEngine" hidden style="padding:30px;font:14px Segoe UI">This window uses an outdated browser engine. Please run the Aurelune installer again (it installs Microsoft WebView2) or start Aurelune with Microsoft Edge.</div>
@@ -34,7 +34,10 @@
     <div class="card bin" id="binCard">
       <div class="bin-head"><div><b data-i18n="binTitle">🧠 Brainwave layers</b><small data-i18n="binOnHint">8 binaural beats layered on your sound</small></div>
         <span id="binState" class="verdict">–</span><label class="switch"><input type="checkbox" id="binOn"><span></span></label></div>
-      <div class="seg four" id="binSeg"><button data-v="delta" data-i18n="binDelta">Delta</button><button data-v="theta" data-i18n="binTheta">Theta</button><button data-v="alpha" data-i18n="binAlpha">Alpha</button><button data-v="gateway" data-i18n="binGateway">Gateway</button></div>
+      <div class="seg four" id="binSeg"><button data-v="delta" data-i18n="binDelta">Delta</button><button data-v="theta" data-i18n="binTheta">Theta</button><button data-v="alpha" data-i18n="binAlpha">Alpha</button><button data-v="gateway" data-i18n="binGateway">Gateway</button><button data-v="septa" data-i18n="binSepta">Septa · 7 Wellen</button></div>
+      <div class="bin-count"><label data-i18n="binCountT">Stacked frequencies</label>
+        <div class="seg count-seg" id="binCountSeg"><button data-v="2">2</button><button data-v="4">4</button><button data-v="7">7</button><button data-v="8">8</button><button data-v="16">16</button><button data-v="32">32</button></div>
+        <small class="bin-desc" data-i18n="binCountH"></small></div>
       <small class="bin-desc" id="binDesc"></small>
       <div class="bin-more">
         <div class="bin-layers" id="binLayers"></div>
@@ -156,5 +159,6 @@
 <script src="v38.js"></script>
 <script src="v39.js"></script>
 <script src="v310.js"></script>
+<script src="v311.js"></script>
 <script src="update.js"></script>
 </body></html>

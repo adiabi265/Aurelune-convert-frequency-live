@@ -27,9 +27,9 @@
       cymLive: 'Lautester Ton gerade: {f} Hz · {note}',
     });
   } catch (e) {}
-  var STEPS = [0, 0.75, 1.5, 3];
-  function key(v) { return v === 0 ? '0' : v === 0.75 ? '075' : v === 1.5 ? '15' : '3'; }
-  function cur() { return settings.precision ? (STEPS.indexOf(Number(settings.lock_s)) > 0 ? Number(settings.lock_s) : 0.75) : 0; }
+  var STEPS = [0, 0.75];   // v3.11: only Off / 0.75 s
+  function key(v) { return v === 0 ? '0' : '075'; }
+  function cur() { return settings.precision ? 0.75 : 0; }
   function build() {
     var sw = $('precise'); if (!sw || $('lockSeg')) return;
     var row = sw.closest('.set-row'); if (!row) return;
@@ -41,7 +41,7 @@
     var seg = document.createElement('div'); seg.className = 'seg lock-seg'; seg.id = 'lockSeg';
     STEPS.forEach(function (v) {
       var x = document.createElement('button'); x.type = 'button'; x.dataset.v = String(v);
-      x.onclick = function () { var p = { precision: v > 0 }; if (v > 0) p.lock_s = v; setS(p); };
+      x.onclick = function () { setS(v > 0 ? { precision: true, lock_s: 0.75 } : { precision: false }); };
       seg.appendChild(x);
     });
     row.parentNode.insertBefore(seg, row.nextSibling);

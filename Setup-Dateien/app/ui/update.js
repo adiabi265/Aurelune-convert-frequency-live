@@ -1,11 +1,11 @@
 /* Aurelune Studio - automatic updates from GitHub */
 (function () {
   const T = {
-    en: { title: '🔄 Automatic updates', hint: 'Checks GitHub for new versions on start and every 6 hours.',
+    en: { title: '🔄 Automatic updates', hint: 'Checks GitHub on start and every hour - new versions install themselves and Aurelune restarts automatically.',
       avail: 'Update {v} available', install: 'Install', check: 'Check now', checking: 'Checking …',
       uptodate: 'Up to date – version {v}', error: 'Update check failed (offline?)', dl: 'Downloading update … {p} %',
       launching: 'Installing – Aurelune restarts in a moment …', failed: 'Update failed: {v}', cur: 'Installed: {v}' },
-    de: { title: '🔄 Automatische Updates', hint: 'Prüft beim Start und alle 6 Stunden auf GitHub, ob es eine neue Version gibt.',
+    de: { title: '🔄 Automatische Updates', hint: 'Prüft beim Start und jede Stunde auf GitHub - neue Versionen installieren sich selbst und Aurelune startet automatisch neu.',
       avail: 'Update {v} verfügbar', install: 'Installieren', check: 'Jetzt prüfen', checking: 'Prüfe …',
       uptodate: 'Aktuell – Version {v}', error: 'Update-Prüfung fehlgeschlagen (offline?)', dl: 'Lade Update … {p} %',
       launching: 'Wird installiert – Aurelune startet gleich neu …', failed: 'Update fehlgeschlagen: {v}', cur: 'Installiert: {v}' }
@@ -42,6 +42,16 @@
     checking = true; render();
     try { const r = await call('update_check', !!force); if (r && r.ok !== false) { st = r; if (el('autoUpd')) el('autoUpd').checked = r.auto !== false; } }
     finally { checking = false; render(); }
+    autoInstall();
+  }
+  // v3.11: with automatic updates on, a new version installs itself and Aurelune restarts on its own
+  // (once per version - if it fails, the normal "Install" button stays available).
+  function autoInstall() {
+    if (st.auto === false || !st.available || !st.latest) return;
+    if (localStorage.getItem('updAutoTried') === st.latest) return;
+    localStorage.setItem('updAutoTried', st.latest);
+    if (typeof toast === 'function') toast(tr('avail', st.latest) + ' – ' + tr('launching'));
+    setTimeout(install, 3000);
   }
   function pollInstall() {
     clearInterval(pollH);
@@ -68,7 +78,7 @@
     if (typeof api === 'undefined' || !api || typeof call !== 'function') return setTimeout(boot, 500);
     wireUpd(); render();
     setTimeout(() => check(false), 4000);
-    setInterval(() => { if (!el('autoUpd') || el('autoUpd').checked) check(true); }, 6 * 3600 * 1000);
+    setInterval(() => { if (!el('autoUpd') || el('autoUpd').checked) check(true); }, 3600 * 1000);   // hourly
     setInterval(render, 1500);  // follows language switches
   }
   boot();

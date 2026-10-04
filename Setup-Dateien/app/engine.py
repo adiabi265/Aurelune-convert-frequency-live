@@ -67,7 +67,7 @@ def wrap50(c):
 class Engine:
     def __init__(self):
         self.settings = {'enabled': True, 'target_a4': 432.0, 'auto': True, 'manual_ref': 440.0, 'quality': 'music',
-                         'binaural': False, 'bin_preset': 'gateway', 'bin_level': 0.2, 'bin_noise': 0.3, 'bin_auto': True,
+                         'binaural': False, 'bin_preset': 'gateway', 'bin_count': 4, 'bin_level': 0.2, 'bin_noise': 0.3, 'bin_auto': True,
                          'precision': True, 'lock_s': 0.75}
         self.running = False
         self.lock = threading.Lock()
@@ -120,12 +120,13 @@ class Engine:
         self.mus_rms = 0.0
         self.bin_eff = 0.0
         if self.precise:
-            # look-ahead: the song is analysed 1.5 s before it is played, long integration, then held steady
-            lock_s = min(3.0, max(0.5, float(self.settings.get('lock_s') or 0.75)))
+            # look-ahead: the song is analysed 0.75 s before it is played
+            lock_s = 0.75                   # v3.11: only the 0.75 s lock remains (most accurate with real music)
+            self.settings['lock_s'] = lock_s
             self.look = int(self.in_sr * lock_s)
             self.delay = deque()
             self.probe_ahead = SpectrumProbe(self.in_sr, 1024)
-            # 432-Lock: fast detector (tau 1.5 s) whose window is centred on the played audio by the 1.5 s
+            # 432-Lock: detector window (+-0.75 s, Hann) centred on the played audio by the 0.75 s
             # look-ahead -> the correction follows the song's real tuning moment by moment (sim: <1 cent)
             self.probe_ahead.detector = CenteredTuning(self.in_sr, 1024, lock_s)   # symmetric window around the played moment
         self.limiter = Limiter()
@@ -253,7 +254,7 @@ class Engine:
             while acc.shape[1] >= H and self.running:
                 t0 = time.perf_counter()
                 hop, acc = acc[:, :H], acc[:, H:]
-                if self.precise:            # analyse now, play 1.5 s later
+                if self.precise:            # analyse now, play 0.75 s later
                     self.probe_ahead.push(hop)
                     d = self.probe_ahead.detector
                     c, e = d.estimate()
@@ -285,7 +286,8 @@ class Engine:
                 if s.get('binaural') or self.binaural.active:   # brainwave layers on top (after the proof)
                     y = y + self.binaural.process(y.shape[1], bool(s.get('binaural')), s.get('bin_preset'),
                                                   lvl,
-                                                  min(1.0, max(0.0, float(s.get('bin_noise', 0.3)))))
+                                                  min(1.0, max(0.0, float(s.get('bin_noise', 0.3)))),
+                                                  s.get('bin_count', 4))
                 y = self.limiter.process(y)
                 # clock drift compensation between the two devices
                 # Clock drift between the two devices is only ~10-100 ppm. A slow, damped PI loop on the
@@ -348,7 +350,7 @@ class Engine:
         r['bin_level_eff'] = float(self.bin_eff)
         r['binaural'] = {'on': bool(self.settings.get('binaural')), 'preset': self.binaural.preset,
                          'gain': self.binaural.gain, 'mono': self.out_ch == 1,
-                         'layers': self.binaural.layers(self.settings.get('bin_preset'))}
+                         'layers': self.binaural.layers(self.settings.get('bin_preset'), self.settings.get('bin_count'))}
         if spectrum:
             r['spec_out'] = self.probe_out.spectrum_bytes()
             r['spec_in'] = self.probe_in.spectrum_bytes()

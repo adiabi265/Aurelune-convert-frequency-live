@@ -121,7 +121,7 @@ function renderStatus(force) {
   const a4s = (a4) => (isA4 ? '' : `<small class="a4sub">A4 = ${fmt(a4)} Hz</small>`);
   // v3.9: the original is ALWAYS the real tuning of the song (A4, live measured) - it does not depend on the chosen frequency
   const inA4 = s.in_conf > 0.5 ? s.in_a4 : (s.source === 'fallback' ? 440 : s.reference);
-  $('fIn').innerHTML = s.silent ? t('silence') : `${s.in_conf > 0.5 || s.source !== 'fallback' ? '' : '≈ '}${fmt(inA4)} Hz<small class="a4sub">${t('songTuning')}</small>`;
+  $('fIn').innerHTML = s.silent ? t('silence') : `${s.in_conf > 0.5 || s.source !== 'fallback' ? '' : '≈ '}${fmt(inA4)} Hz<small class="a4sub">${t('songTuning')}</small>${s.peak_in > 20 ? `<small class="a4sub">${t('peakIn', { f: fmt(s.peak_in, 1) })}</small>` : ''}`;
   $('fOut').innerHTML = outOk ? `${fmt(s.out_a4 * kq)} Hz${a4s(s.out_a4)}` : '–';
   // v3.10: main value = average over the song (slow meter), small line = momentary value (natural wobble of the music)
   const avgOk = outOk && s.out_conf_avg > 0.5 && s.out_dev_avg != null;
@@ -354,16 +354,28 @@ if (!window.pywebview && new URLSearchParams(location.search).get('bridge') === 
 }
 
 // ---------- brainwave layers (binaural beats) ----------
-function binLayerTable() {   // must match BinauralGenerator.PRESETS in dsp.py: [carrier Hz, beat Hz]
-  return {
-    delta: [[108, 1.5], [144.16, 2.0], [162, 2.0], [216, 2.5]],
-    theta: [[144.16, 5.5], [192.43, 6.0], [216, 6.0], [256.87, 6.5]],
-    alpha: [[216, 9.5], [256.87, 10.0], [324, 10.0], [432, 10.5]],
-    gateway: [[108, 1.5], [162, 4.0], [216, 7.0], [324, 7.5]],
-  };
+function binCounts() { return [2, 4, 7, 8, 16, 32]; }
+function binPresetTable() { return {   // must match BIN_PRESETS / bin_layers() in dsp.py
+  delta: { band: [1.0, 3.0], car: [108, 270] },
+  theta: { band: [4.5, 7.5], car: [135, 324] },
+  alpha: { band: [8.5, 12.0], car: [216, 540] },
+  gateway: { anchors: [1.5, 4.0, 7.0, 7.5], car: [108, 378] },
+  septa: { anchors: [1.5, 4, 8, 13, 25, 40, 60], car: [108, 594] },
+}; }
+function binCount() { const n = Number(settings.bin_count); return binCounts().includes(n) ? n : 4; }
+function binLayers(pr, n) {   // [{beat, carrier}] - same rule as dsp.bin_layers (carriers = harmonics of 27 Hz)
+  const T = binPresetTable(), p = T[pr] || T.gateway, B = 27, r2 = (x) => Math.round(x * 100) / 100;
+  const kmin = Math.round(p.car[0] / B), kmax = Math.max(Math.round(p.car[1] / B), kmin + n - 1);
+  const ks = []; for (let i = 0; i < n; i++) ks.push(kmin + Math.round(i * (kmax - kmin) / (n - 1)));
+  let beats = [];
+  if (p.band) { const [lo, hi] = p.band; for (let i = 0; i < n; i++) beats.push(r2(lo * Math.pow(hi / lo, i / (n - 1)))); }
+  else { const A = p.anchors;
+    if (n >= A.length) { for (let i = 0; i < n; i++) beats.push(A[i % A.length]); beats.sort((x, y) => x - y); }
+    else for (let i = 0; i < n; i++) beats.push(A[Math.round(i * (A.length - 1) / (n - 1))]); }
+  return ks.map((k, i) => ({ beat: beats[i], carrier: k * B }));
 }
-function binPresets() { const T = binLayerTable(), o = {}; Object.keys(T).forEach((k) => (o[k] = T[k].map((l) => l[1]))); return o; }
-function binCarriers(pr) { const T = binLayerTable(); return (T[pr] || T.gateway).map((l) => l[0]); }
+function binPresets() { const o = {}; Object.keys(binPresetTable()).forEach((k) => (o[k] = binLayers(k, binCount()).map((l) => l.beat))); return o; }
+function binCarriers(pr) { return binLayers(binPresetTable()[pr] ? pr : 'gateway', binCount()).map((l) => l.carrier); }
 function renderBinaural() {
   if (!$('binOn')) return;
   const all = binPresets(), pr = all[settings.bin_preset] ? settings.bin_preset : 'gateway', beats = all[pr], car = binCarriers(pr);
@@ -371,10 +383,12 @@ function renderBinaural() {
   document.querySelectorAll('#binSeg button').forEach((b) => b.classList.toggle('sel', b.dataset.v === pr));
   $('binDesc').textContent = t('binDesc_' + pr);
   const box = $('binLayers'); box.innerHTML = '';
+  box.classList.toggle('many', beats.length > 8);
   beats.forEach((bt, i) => {
     const s = document.createElement('span'); s.textContent = `${fmt(bt, Number.isInteger(bt * 10) ? 1 : 2)} Hz`;
     const sm = document.createElement('small'); sm.textContent = `${fmt(car[i], 0)} Hz`; s.appendChild(sm); box.appendChild(s);
   });
+  document.querySelectorAll('#binCountSeg button').forEach((b) => b.classList.toggle('sel', Number(b.dataset.v) === binCount()));
   box.classList.toggle('on', !!settings.binaural);
   $('binCard').classList.toggle('on', !!settings.binaural);
   if (document.activeElement !== $('binLevel')) $('binLevel').value = Math.round((settings.bin_level ?? 0.2) * 100);
@@ -395,6 +409,7 @@ function wireBinaural() {
   if (!$('binOn')) return;
   $('binOn').onchange = (e) => setS({ binaural: e.target.checked });
   document.querySelectorAll('#binSeg button').forEach((b) => (b.onclick = () => setS({ bin_preset: b.dataset.v })));
+  document.querySelectorAll('#binCountSeg button').forEach((b) => (b.onclick = () => setS({ bin_count: Number(b.dataset.v) })));
   $('binLevel').oninput = () => { $('binLevelV').textContent = `${$('binLevel').value} %`; };
   $('binLevel').onchange = () => setS({ bin_level: Number($('binLevel').value) / 100 });
   $('binNoise').oninput = () => { $('binNoiseV').textContent = `${$('binNoise').value} %`; };
@@ -552,7 +567,7 @@ function drawCymatics(on) {
     CYM.lt = now; const el = $('cymLine');
     if (el) {
       const a4 = status.expected_a4 || settings.target_a4 || 432, n = Math.round(12 * Math.log2(CYM.f / a4));
-      el.textContent = live ? t('cymLive', { f: fmt(CYM.f, 1), note: noteName(n, lang) }) : t('cymIdle', { f: fmt(CYM.f, CYM.f % 1 ? 1 : 0) });
+      el.textContent = live ? t(status.peak_in > 20 && Math.abs(1200 * Math.log2(status.peak_in / status.peak_out)) > 0.5 ? 'cymLive2' : 'cymLive', { f: fmt(status.peak_out, 1), fin: fmt(status.peak_in, 1), note: noteName(n, lang) }) : t('cymIdle', { f: fmt(CYM.f, CYM.f % 1 ? 1 : 0) });
       el.classList.toggle('live', live);
     }
   }

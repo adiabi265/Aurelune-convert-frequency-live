@@ -382,31 +382,65 @@ class Limiter:
         return out
 
 
+BIN_COUNTS = (2, 4, 7, 8, 16, 32)
+BIN_BASE = 27.0     # A0 of the A=432 Hz scale - every carrier is a harmonic of it (108, 135, 162 ... Hz)
+# v3.11: presets describe a RULE instead of a fixed table, so any number of layers can be stacked.
+#   band    - beats spread geometrically over one brainwave band
+#   anchors - fixed beat frequencies (repeated on more carriers when more layers are stacked)
+#   car     - carrier range in Hz (extended upwards when more layers are needed)
+BIN_PRESETS = {
+    'delta':   {'band': (1.0, 3.0), 'car': (108.0, 270.0)},
+    'theta':   {'band': (4.5, 7.5), 'car': (135.0, 324.0)},
+    'alpha':   {'band': (8.5, 12.0), 'car': (216.0, 540.0)},
+    'gateway': {'anchors': (1.5, 4.0, 7.0, 7.5), 'car': (108.0, 378.0)},   # Focus 10 idea: delta + theta + ~7 Hz
+    'septa':   {'anchors': (1.5, 4.0, 8.0, 13.0, 25.0, 40.0, 60.0), 'car': (108.0, 594.0)},  # one beat per band (SeptaSync principle)
+}
+
+
+def bin_layers(preset='gateway', count=4):
+    """[(left Hz, right Hz, beat Hz, carrier Hz, amplitude)] - identical rule in ui/app.js (binLayers)."""
+    p = BIN_PRESETS.get(preset) or BIN_PRESETS['gateway']
+    n = int(count) if int(count or 0) in BIN_COUNTS else 4
+    kmin = int(round(p['car'][0] / BIN_BASE))
+    kmax = max(int(round(p['car'][1] / BIN_BASE)), kmin + n - 1)
+    ks = [kmin + int(round(i * (kmax - kmin) / (n - 1))) for i in range(n)]
+    if 'band' in p:
+        lo, hi = p['band']
+        beats = [round(lo * (hi / lo) ** (i / (n - 1)), 2) for i in range(n)]
+    else:
+        A = p['anchors']
+        if n >= len(A):
+            beats = sorted(A[i % len(A)] for i in range(n))
+        else:
+            beats = [A[int(round(i * (len(A) - 1) / (n - 1)))] for i in range(n)]
+    amp = [(k / ks[0]) ** -0.5 for k in ks]            # higher carriers a little softer (pink balance)
+    norm = 0.5 / sum(a * a for a in amp) ** 0.5        # constant loudness: RMS 0.354 for any count
+    out = []
+    for k, b, a in zip(ks, beats, amp):
+        fc = k * BIN_BASE
+        out.append((fc - b / 2.0, fc + b / 2.0, b, fc, a * norm))
+    return out
+
+
 class BinauralGenerator:
-    """Layered binaural beats (brainwave mode).
+    """Stacked binaural beats (brainwave mode).
 
     Each layer plays carrier - beat/2 on the LEFT ear and carrier + beat/2 on the RIGHT ear; the brain
-    perceives the difference as the beat (needs stereo headphones). Phase-continuous float64 synthesis
-    keeps every beat frequency exact, gain changes are 2 s linear fades, presets cross-fade through
-    silence, and an optional pink-noise bed (seamless loop) can be laid underneath.
-    Carriers sit on the A=432 Hz scale.
+    perceives the difference as the beat (needs stereo headphones). 2 ... 32 layers can be stacked
+    (SeptaSync uses 7 beats on 14 carrier tones, the Gateway tapes a few layers). Phase-continuous float64
+    synthesis keeps every beat exact, gain changes are 2 s linear fades, preset / layer-count changes
+    cross-fade through silence, and an optional pink-noise bed (seamless loop) can be laid underneath.
+    Carriers are harmonics of 27 Hz (A=432 Hz scale), so the stack stays consonant.
     """
-    # v3.8: every preset has its OWN carriers and a beat cluster around ONE target rhythm (4 layers).
-    # Before, all presets shared the same 8 carriers and 8 beats smeared over a wide range -> they all
-    # sounded alike and no single rhythm stood out. Carriers are notes of the A=432 Hz scale.
-    PRESETS = {
-        'delta': ((108.0, 1.5), (144.16, 2.0), (162.0, 2.0), (216.0, 2.5)),       # deep, ~2 Hz
-        'theta': ((144.16, 5.5), (192.43, 6.0), (216.0, 6.0), (256.87, 6.5)),     # ~6 Hz
-        'alpha': ((216.0, 9.5), (256.87, 10.0), (324.0, 10.0), (432.0, 10.5)),    # bright, ~10 Hz
-        'gateway': ((108.0, 1.5), (162.0, 4.0), (216.0, 7.0), (324.0, 7.5)),     # Focus 10: ~7-7.5 Hz resonance (CIA Gateway report) + theta 4 + delta 1.5
-    }
-    CARRIERS = tuple(c for c, _ in PRESETS['gateway'])
+    PRESETS = BIN_PRESETS
+    CARRIERS = tuple(l[3] for l in bin_layers('gateway', 4))
 
     def __init__(self, sr, fade_s=2.0, seed=None):
         self.sr = sr
         self.step = 1.0 / (fade_s * sr)
         self.gain = 0.0
         self.preset = None
+        self.count = 4
         self.ph = np.zeros((2, 4))
         self.noise = self._pink(seed=seed)
         self.npos = 0
@@ -415,9 +449,15 @@ class BinauralGenerator:
     def active(self):
         return self.gain > 0.0
 
-    def layers(self, preset=None):
-        lay = self.PRESETS.get(preset or self.preset or 'gateway', self.PRESETS['gateway'])
-        return [(fc - b / 2.0, fc + b / 2.0, b) for fc, b in lay]
+    @staticmethod
+    def _start_phases(n):
+        """Schroeder phases: the carriers are harmonics of 27 Hz and would otherwise line up into a
+        buzzy 27 Hz pulse train - spread phases keep the stack smooth (low crest factor)."""
+        p = np.pi * np.arange(n) * (np.arange(n) + 1) / n
+        return np.vstack([p, p])
+
+    def layers(self, preset=None, count=None):
+        return [l[:3] for l in bin_layers(preset or self.preset or 'gateway', count or self.count)]
 
     def _pink(self, n=1 << 19, seed=None):
         rng = np.random.default_rng(seed)
@@ -431,26 +471,28 @@ class BinauralGenerator:
             out[c] = x / (np.sqrt(np.mean(x ** 2)) + 1e-12)
         return out
 
-    def process(self, n, on, preset, level, noise):
-        want = preset if preset in self.PRESETS else 'gateway'
+    def process(self, n, on, preset, level, noise, count=4):
+        want = (preset if preset in self.PRESETS else 'gateway', int(count) if int(count or 0) in BIN_COUNTS else 4)
         if self.preset is None:
-            self.preset = want
-        switching = want != self.preset
+            self.preset, self.count = want
+            self.ph = self._start_phases(want[1])
+        switching = want != (self.preset, self.count)
         target = float(level) if (on and not switching) else 0.0
         if self.gain == 0.0 and (target == 0.0 or switching):
-            if switching:  # faded out -> swap preset, next call fades the new one in
-                self.preset = want
-                self.ph[:] = 0.0
+            if switching:  # faded out -> swap preset / layer count, next call fades the new stack in
+                self.preset, self.count = want
+                self.ph = self._start_phases(want[1])
             return np.zeros((2, n))
         d = target - self.gain
         k = np.arange(1, n + 1)
         step = self.step * max(float(level), 0.02)   # a full fade always takes fade_s
         g = self.gain + np.sign(d) * np.minimum(step * k, abs(d))
         self.gain = float(g[-1])
-        lay = self.layers(self.preset)
+        lay = bin_layers(self.preset, self.count)
         w = (TWO_PI / self.sr) * np.array([[l[0] for l in lay], [l[1] for l in lay]])  # rad/sample
+        amp = np.array([l[4] for l in lay])
         ph = self.ph[:, :, None] + w[:, :, None] * k                                      # (2, L, n)
-        sig = np.sin(ph).sum(axis=1) / len(lay)
+        sig = np.einsum('l,cln->cn', amp, np.sin(ph))
         self.ph = np.mod(ph[:, :, -1], TWO_PI)
         if noise > 0:
             N = self.noise.shape[1]
