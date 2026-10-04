@@ -338,7 +338,7 @@ async function start() {
 
 window.addEventListener('error', (e) => showAlert('E_GENERIC', e.message));
 window.addEventListener('unhandledrejection', (e) => showAlert('E_GENERIC', String(e.reason)));
-wire(); applyLang(); animate();
+wire(); applyLang(); requestAnimationFrame(animate);  // deferred: CYM etc. are declared further below
 // pywebview bridge, or HTTP bridge when running in an Edge app window
 // pywebview 5 also serves the UI over http - only the Edge fallback sets ?bridge=http
 if (!window.pywebview && new URLSearchParams(location.search).get('bridge') === 'http') {

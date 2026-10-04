@@ -1,2 +1,3 @@
+3.4.1 – Fix: App blieb beim Start auf „Off“ hängen (Cymatics-Startfehler)
 3.4.0 – Automatische Updates direkt in der App (GitHub)
 3.3.1 – Präzisions-Modus, Cymatics-Visualizer, Gehirnwellen-Modus
