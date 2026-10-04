@@ -119,7 +119,9 @@ function renderStatus(force) {
   // v3.8: show both values on the grid of the chosen frequency (e.g. 174 Hz) - A4 only as small extra line
   const kq = p.hz / s.target_a4, isA4 = Math.abs(p.hz - s.target_a4) < 0.05;
   const a4s = (a4) => (isA4 ? '' : `<small class="a4sub">A4 = ${fmt(a4)} Hz</small>`);
-  $('fIn').innerHTML = s.silent ? t('silence') : (s.source === 'fallback' ? `≈ ${fmt(440 * kq)} Hz` : `${fmt(s.reference * kq)} Hz${a4s(s.reference)}`);
+  // v3.9: the original is ALWAYS the real tuning of the song (A4, live measured) - it does not depend on the chosen frequency
+  const inA4 = s.in_conf > 0.5 ? s.in_a4 : (s.source === 'fallback' ? 440 : s.reference);
+  $('fIn').innerHTML = s.silent ? t('silence') : `${s.in_conf > 0.5 || s.source !== 'fallback' ? '' : '≈ '}${fmt(inA4)} Hz<small class="a4sub">${t('songTuning')}</small>`;
   $('fOut').innerHTML = outOk ? `${fmt(s.out_a4 * kq)} Hz${a4s(s.out_a4)}` : '–';
   $('fDev').textContent = outOk ? fmtC(s.out_dev) : '–';
   const v = $('verdict');
@@ -354,7 +356,7 @@ function binLayerTable() {   // must match BinauralGenerator.PRESETS in dsp.py: 
     delta: [[108, 1.5], [144.16, 2.0], [162, 2.0], [216, 2.5]],
     theta: [[144.16, 5.5], [192.43, 6.0], [216, 6.0], [256.87, 6.5]],
     alpha: [[216, 9.5], [256.87, 10.0], [324, 10.0], [432, 10.5]],
-    gateway: [[108, 1.5], [162, 4.0], [216, 7.83], [324, 10.0]],
+    gateway: [[108, 1.5], [162, 4.0], [216, 7.0], [324, 7.5]],
   };
 }
 function binPresets() { const T = binLayerTable(), o = {}; Object.keys(T).forEach((k) => (o[k] = T[k].map((l) => l[1]))); return o; }

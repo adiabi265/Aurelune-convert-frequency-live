@@ -394,7 +394,7 @@ class BinauralGenerator:
         'delta': ((108.0, 1.5), (144.16, 2.0), (162.0, 2.0), (216.0, 2.5)),       # deep, ~2 Hz
         'theta': ((144.16, 5.5), (192.43, 6.0), (216.0, 6.0), (256.87, 6.5)),     # ~6 Hz
         'alpha': ((216.0, 9.5), (256.87, 10.0), (324.0, 10.0), (432.0, 10.5)),    # bright, ~10 Hz
-        'gateway': ((108.0, 1.5), (162.0, 4.0), (216.0, 7.83), (324.0, 10.0)),    # delta+theta+Schumann+alpha
+        'gateway': ((108.0, 1.5), (162.0, 4.0), (216.0, 7.0), (324.0, 7.5)),     # Focus 10: ~7-7.5 Hz resonance (CIA Gateway report) + theta 4 + delta 1.5
     }
     CARRIERS = tuple(c for c, _ in PRESETS['gateway'])
 

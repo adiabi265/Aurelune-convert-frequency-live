@@ -67,7 +67,7 @@ def wrap50(c):
 class Engine:
     def __init__(self):
         self.settings = {'enabled': True, 'target_a4': 432.0, 'auto': True, 'manual_ref': 440.0, 'quality': 'music',
-                         'binaural': False, 'bin_preset': 'gateway', 'bin_level': 0.2, 'bin_noise': 0.3,
+                         'binaural': False, 'bin_preset': 'gateway', 'bin_level': 0.2, 'bin_noise': 0.3, 'bin_auto': True,
                          'precision': True, 'lock_s': 1.5}
         self.running = False
         self.lock = threading.Lock()
@@ -112,6 +112,11 @@ class Engine:
         H = self.shifter.H
         self.probe_in = SpectrumProbe(self.in_sr, 1024)    # analysis hop 1024 (~21 ms) – light on CPU
         self.probe_out = SpectrumProbe(self.in_sr, 1024)
+        # v3.9 live meter: tau 0.7 s -> a tuning change shows within ~0.8 s (10 cent) / ~1.6 s (2 cent), noise ~0.15 cent
+        self.probe_in.detector = TuningDetector(self.in_sr, 1024, tau=0.7)
+        self.probe_out.detector = TuningDetector(self.in_sr, 1024, tau=0.7)
+        self.mus_rms = 0.0
+        self.bin_eff = 0.0
         if self.precise:
             # look-ahead: the song is analysed 1.5 s before it is played, long integration, then held steady
             lock_s = min(3.0, max(0.5, float(self.settings.get('lock_s') or 1.5)))
@@ -121,7 +126,6 @@ class Engine:
             # 432-Lock: fast detector (tau 1.5 s) whose window is centred on the played audio by the 1.5 s
             # look-ahead -> the correction follows the song's real tuning moment by moment (sim: <1 cent)
             self.probe_ahead.detector = CenteredTuning(self.in_sr, 1024, lock_s)   # symmetric window around the played moment
-            self.probe_out.detector = TuningDetector(self.in_sr, 1024, tau=2.0)   # proof reacts within ~2 s
         self.limiter = Limiter()
         self.binaural = BinauralGenerator(self.in_sr)
         self.resampler = SincResampler(2, self.out_sr / self.in_sr)
@@ -266,9 +270,17 @@ class Engine:
                 self.probe_in.push(hop)
                 self.probe_out.push(y)
                 s = self.settings
+                self.mus_rms += (float(np.sqrt(np.mean(y * y))) - self.mus_rms) * min(1.0, H / self.in_sr / 2.0)
+                if s.get('bin_auto', True):
+                    # Gateway principle: beats 'virtually subliminal, marginally audible' - kept ~16 dB under the
+                    # music (follows its loudness), floor ~-40 dBFS when it is quiet. 0.354 = RMS of the layers at gain 1.
+                    lvl = min(0.5, max(0.03, self.mus_rms * 10 ** (-16 / 20) / 0.354))
+                else:
+                    lvl = min(0.5, max(0.0, float(s.get('bin_level', 0.2))))
+                self.bin_eff = lvl
                 if s.get('binaural') or self.binaural.active:   # brainwave layers on top (after the proof)
                     y = y + self.binaural.process(y.shape[1], bool(s.get('binaural')), s.get('bin_preset'),
-                                                  min(0.5, max(0.0, float(s.get('bin_level', 0.2)))),
+                                                  lvl,
                                                   min(1.0, max(0.0, float(s.get('bin_noise', 0.3)))))
                 y = self.limiter.process(y)
                 # clock drift compensation between the two devices
@@ -322,6 +334,9 @@ class Engine:
             'limiter_db': self.limiter.reduction_db,
         }
         r['precision'] = self.precise
+        ic, ie = self.probe_in.detector.estimate()
+        r['in_a4'], r['in_conf'] = float(ie), float(ic)
+        r['bin_level_eff'] = float(self.bin_eff)
         r['binaural'] = {'on': bool(self.settings.get('binaural')), 'preset': self.binaural.preset,
                          'gain': self.binaural.gain, 'mono': self.out_ch == 1,
                          'layers': self.binaural.layers(self.settings.get('bin_preset'))}
