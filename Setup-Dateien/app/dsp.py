@@ -88,6 +88,51 @@ class TuningDetector:
         return float(conf), float(self.base * 2 ** (dev / 1200.0))
 
 
+class CenteredTuning:
+    """432-Lock: tuning of the moment that is being PLAYED, measured symmetrically (Hann window)
+    look_s seconds before and after it - possible because the audio is delayed by look_s.
+    Same interface as TuningDetector (update / estimate / reset / silent_frames / weight)."""
+
+    def __init__(self, sr, hop, look_s, base=440.0):
+        self.sr, self.hop, self.base = sr, hop, base
+        self.n = max(5, int(round(2 * look_s * sr / hop)) + 1)
+        self.win = np.hanning(self.n + 2)[1:-1]
+        self.reset()
+
+    def reset(self):
+        self.vec = np.zeros(self.n, dtype=complex)
+        self.w = np.zeros(self.n)
+        self.i = 0
+        self.silent_frames = 0
+        self.weight = 0.0
+        self.locked_ref = None
+
+    def update(self, freqs, mags, frame_rms):
+        v, ww = 0j, 0.0
+        if frame_rms < 1e-4:
+            self.silent_frames += 1
+        else:
+            self.silent_frames = 0
+            sel = (freqs > 60) & (freqs < 4000)
+            f, w = freqs[sel], mags[sel]
+            if w.size:
+                w = w * (w / w.max()) ** 1.5
+                v = complex(np.sum(w * np.exp(1j * TWO_PI * (1200 * np.log2(f / self.base)) / 100.0)))
+                ww = float(np.sum(w))
+        self.vec[self.i], self.w[self.i] = v, ww
+        self.i = (self.i + 1) % self.n
+        c, r = self.estimate()
+        self.locked_ref = r if c > 0.35 and self.weight > 1e-3 else None
+
+    def estimate(self):
+        order = (np.arange(self.n) + self.i) % self.n           # oldest .. newest
+        V = complex(np.dot(self.win, self.vec[order]))
+        self.weight = W = float(np.dot(self.win, self.w[order]))
+        if W <= 1e-9:
+            return 0.0, self.base
+        return float(abs(V) / W), float(self.base * 2 ** (np.angle(V) / TWO_PI * 100.0 / 1200.0))
+
+
 def hann(N):
     return 0.5 - 0.5 * np.cos(TWO_PI * np.arange(N) / N)
 
@@ -342,20 +387,23 @@ class BinauralGenerator:
     silence, and an optional pink-noise bed (seamless loop) can be laid underneath.
     Carriers sit on the A=432 Hz scale.
     """
-    CARRIERS = (108.0, 128.43, 144.16, 162.0, 192.43, 216.0, 256.87, 324.0)
+    # v3.8: every preset has its OWN carriers and a beat cluster around ONE target rhythm (4 layers).
+    # Before, all presets shared the same 8 carriers and 8 beats smeared over a wide range -> they all
+    # sounded alike and no single rhythm stood out. Carriers are notes of the A=432 Hz scale.
     PRESETS = {
-        'delta': (0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0),
-        'theta': (4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5),
-        'alpha': (8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 12.0),
-        'gateway': (1.5, 3.0, 4.0, 5.5, 7.0, 7.83, 10.0, 14.0),
+        'delta': ((108.0, 1.5), (144.16, 2.0), (162.0, 2.0), (216.0, 2.5)),       # deep, ~2 Hz
+        'theta': ((144.16, 5.5), (192.43, 6.0), (216.0, 6.0), (256.87, 6.5)),     # ~6 Hz
+        'alpha': ((216.0, 9.5), (256.87, 10.0), (324.0, 10.0), (432.0, 10.5)),    # bright, ~10 Hz
+        'gateway': ((108.0, 1.5), (162.0, 4.0), (216.0, 7.83), (324.0, 10.0)),    # delta+theta+Schumann+alpha
     }
+    CARRIERS = tuple(c for c, _ in PRESETS['gateway'])
 
     def __init__(self, sr, fade_s=2.0, seed=None):
         self.sr = sr
         self.step = 1.0 / (fade_s * sr)
         self.gain = 0.0
         self.preset = None
-        self.ph = np.zeros((2, len(self.CARRIERS)))
+        self.ph = np.zeros((2, 4))
         self.noise = self._pink(seed=seed)
         self.npos = 0
 
@@ -364,8 +412,8 @@ class BinauralGenerator:
         return self.gain > 0.0
 
     def layers(self, preset=None):
-        beats = self.PRESETS.get(preset or self.preset or 'gateway', self.PRESETS['gateway'])
-        return [(fc - b / 2.0, fc + b / 2.0, b) for fc, b in zip(self.CARRIERS, beats)]
+        lay = self.PRESETS.get(preset or self.preset or 'gateway', self.PRESETS['gateway'])
+        return [(fc - b / 2.0, fc + b / 2.0, b) for fc, b in lay]
 
     def _pink(self, n=1 << 19, seed=None):
         rng = np.random.default_rng(seed)

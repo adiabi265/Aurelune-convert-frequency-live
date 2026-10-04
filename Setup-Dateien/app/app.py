@@ -325,7 +325,7 @@ class Api:
     # ---------- settings ----------
     @safe
     def set_settings(self, patch, ui=None):
-        restart = self._engine.running and any(k in patch and patch[k] != self._engine.settings.get(k) for k in ('quality', 'precision'))
+        restart = self._engine.running and any(k in patch and patch[k] != self._engine.settings.get(k) for k in ('quality', 'precision', 'lock_s'))
         self._engine.update(patch)
         self._cfg['settings'] = {k: v for k, v in self._engine.settings.items() if k != 'enabled'}
         if ui:

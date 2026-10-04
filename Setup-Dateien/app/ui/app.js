@@ -116,8 +116,11 @@ function renderStatus(force) {
   } else {
     $('orbHz').textContent = p.hz; $('orbCap').textContent = s.silent ? t('waiting') : t('target'); dispHz = null;
   }
-  $('fIn').textContent = s.silent ? t('silence') : (s.source === 'fallback' ? '≈ 440 Hz' : `${fmt(s.reference)} Hz`);
-  $('fOut').textContent = outOk ? `${fmt(s.out_a4)} Hz` : '–';
+  // v3.8: show both values on the grid of the chosen frequency (e.g. 174 Hz) - A4 only as small extra line
+  const kq = p.hz / s.target_a4, isA4 = Math.abs(p.hz - s.target_a4) < 0.05;
+  const a4s = (a4) => (isA4 ? '' : `<small class="a4sub">A4 = ${fmt(a4)} Hz</small>`);
+  $('fIn').innerHTML = s.silent ? t('silence') : (s.source === 'fallback' ? `≈ ${fmt(440 * kq)} Hz` : `${fmt(s.reference * kq)} Hz${a4s(s.reference)}`);
+  $('fOut').innerHTML = outOk ? `${fmt(s.out_a4 * kq)} Hz${a4s(s.out_a4)}` : '–';
   $('fDev').textContent = outOk ? fmtC(s.out_dev) : '–';
   const v = $('verdict');
   if (s.silent) { v.textContent = t('silence'); v.className = 'verdict'; }
@@ -346,18 +349,19 @@ if (!window.pywebview && new URLSearchParams(location.search).get('bridge') === 
 }
 
 // ---------- brainwave layers (binaural beats) ----------
-function binPresets() {
+function binLayerTable() {   // must match BinauralGenerator.PRESETS in dsp.py: [carrier Hz, beat Hz]
   return {
-    delta: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0],
-    theta: [4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5],
-    alpha: [8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 12.0],
-    gateway: [1.5, 3.0, 4.0, 5.5, 7.0, 7.83, 10.0, 14.0],
+    delta: [[108, 1.5], [144.16, 2.0], [162, 2.0], [216, 2.5]],
+    theta: [[144.16, 5.5], [192.43, 6.0], [216, 6.0], [256.87, 6.5]],
+    alpha: [[216, 9.5], [256.87, 10.0], [324, 10.0], [432, 10.5]],
+    gateway: [[108, 1.5], [162, 4.0], [216, 7.83], [324, 10.0]],
   };
 }
-function binCarriers() { return [108, 128.43, 144.16, 162, 192.43, 216, 256.87, 324]; }
+function binPresets() { const T = binLayerTable(), o = {}; Object.keys(T).forEach((k) => (o[k] = T[k].map((l) => l[1]))); return o; }
+function binCarriers(pr) { const T = binLayerTable(); return (T[pr] || T.gateway).map((l) => l[0]); }
 function renderBinaural() {
   if (!$('binOn')) return;
-  const all = binPresets(), pr = all[settings.bin_preset] ? settings.bin_preset : 'gateway', beats = all[pr], car = binCarriers();
+  const all = binPresets(), pr = all[settings.bin_preset] ? settings.bin_preset : 'gateway', beats = all[pr], car = binCarriers(pr);
   $('binOn').checked = !!settings.binaural;
   document.querySelectorAll('#binSeg button').forEach((b) => b.classList.toggle('sel', b.dataset.v === pr));
   $('binDesc').textContent = t('binDesc_' + pr);

@@ -1,0 +1,3 @@
+.a4sub { display:block; font-size:11.5px; color:var(--mut); font-weight:500; margin-top:2px; }
+.lock-seg { grid-template-columns:repeat(4,1fr); margin-top:8px; }
+.lock-seg { margin-bottom:12px; }

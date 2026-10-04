@@ -14,7 +14,7 @@ import time
 import numpy as np
 import sounddevice as sd
 
-from dsp import PhaseLockedPitchShifter, SincResampler, SpectrumProbe, Limiter, BinauralGenerator, TuningDetector
+from dsp import PhaseLockedPitchShifter, SincResampler, SpectrumProbe, Limiter, BinauralGenerator, TuningDetector, CenteredTuning
 
 PROFILES = {'music': (4096, 8), 'voice': (2048, 4), 'precision': (8192, 8)}
 
@@ -68,7 +68,7 @@ class Engine:
     def __init__(self):
         self.settings = {'enabled': True, 'target_a4': 432.0, 'auto': True, 'manual_ref': 440.0, 'quality': 'music',
                          'binaural': False, 'bin_preset': 'gateway', 'bin_level': 0.2, 'bin_noise': 0.3,
-                         'precision': True}
+                         'precision': True, 'lock_s': 1.5}
         self.running = False
         self.lock = threading.Lock()
         self.istream = self.ostream = None
@@ -114,13 +114,14 @@ class Engine:
         self.probe_out = SpectrumProbe(self.in_sr, 1024)
         if self.precise:
             # look-ahead: the song is analysed 1.5 s before it is played, long integration, then held steady
-            self.look = int(self.in_sr * 1.5)
+            lock_s = min(3.0, max(0.5, float(self.settings.get('lock_s') or 1.5)))
+            self.look = int(self.in_sr * lock_s)
             self.delay = deque()
             self.probe_ahead = SpectrumProbe(self.in_sr, 1024)
             # 432-Lock: fast detector (tau 1.5 s) whose window is centred on the played audio by the 1.5 s
             # look-ahead -> the correction follows the song's real tuning moment by moment (sim: <1 cent)
-            self.probe_ahead.detector = TuningDetector(self.in_sr, 1024, tau=1.5)
-            self.probe_out.detector = TuningDetector(self.in_sr, 1024, tau=6.0)   # longer, more precise proof
+            self.probe_ahead.detector = CenteredTuning(self.in_sr, 1024, lock_s)   # symmetric window around the played moment
+            self.probe_out.detector = TuningDetector(self.in_sr, 1024, tau=2.0)   # proof reacts within ~2 s
         self.limiter = Limiter()
         self.binaural = BinauralGenerator(self.in_sr)
         self.resampler = SincResampler(2, self.out_sr / self.in_sr)
