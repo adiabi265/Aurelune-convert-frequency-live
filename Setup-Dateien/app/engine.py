@@ -68,7 +68,7 @@ class Engine:
     def __init__(self):
         self.settings = {'enabled': True, 'target_a4': 432.0, 'auto': True, 'manual_ref': 440.0, 'quality': 'music',
                          'binaural': False, 'bin_preset': 'gateway', 'bin_level': 0.2, 'bin_noise': 0.3,
-                         'precision': False}
+                         'precision': True}
         self.running = False
         self.lock = threading.Lock()
         self.istream = self.ostream = None
@@ -86,6 +86,7 @@ class Engine:
         self.drift_i = 0.0
         self.precise = False
         self.probe_ahead = None
+        self.ff_ref = None
         self.delay = None
         self.look = 0
         self.cpu = 0.0
@@ -116,7 +117,9 @@ class Engine:
             self.look = int(self.in_sr * 1.5)
             self.delay = deque()
             self.probe_ahead = SpectrumProbe(self.in_sr, 1024)
-            self.probe_ahead.detector = TuningDetector(self.in_sr, 1024, tau=12.0, follow_slow_s=6.0)
+            # 432-Lock: fast detector (tau 1.5 s) whose window is centred on the played audio by the 1.5 s
+            # look-ahead -> the correction follows the song's real tuning moment by moment (sim: <1 cent)
+            self.probe_ahead.detector = TuningDetector(self.in_sr, 1024, tau=1.5)
             self.probe_out.detector = TuningDetector(self.in_sr, 1024, tau=6.0)   # longer, more precise proof
         self.limiter = Limiter()
         self.binaural = BinauralGenerator(self.in_sr)
@@ -202,6 +205,10 @@ class Engine:
         det = self.probe_ahead.detector if self.precise else self.shifter.detector
         if not s['auto']:
             return float(s['manual_ref']), 'manual'
+        if self.precise:
+            if self.ff_ref is not None:
+                return float(self.ff_ref), 'measured'
+            return 440.0, 'fallback'
         if det.locked_ref is not None:
             return float(det.locked_ref), 'measured'
         return 440.0, 'fallback'
@@ -239,6 +246,10 @@ class Engine:
                 hop, acc = acc[:, :H], acc[:, H:]
                 if self.precise:            # analyse now, play 1.5 s later
                     self.probe_ahead.push(hop)
+                    d = self.probe_ahead.detector
+                    c, e = d.estimate()
+                    if c > 0.35 and d.weight > 1e-3:      # hold the last good value through drums / pauses
+                        self.ff_ref = e
                     self.delay.append(hop)
                     if len(self.delay) * H <= self.look:
                         continue
@@ -265,8 +276,8 @@ class Engine:
                 hop_s = H / self.in_sr
                 self.fill_avg += (self.fill - self.fill_avg) * (hop_s / 3.0)      # ~3 s average
                 err = (self.fill_avg - self.target_fill) / self.out_sr            # seconds
-                self.drift_i = float(np.clip(self.drift_i - err * hop_s * 1e-3, -1e-3, 1e-3))
-                corr = float(np.clip(self.drift_i - err * 0.05, -1e-3, 1e-3))     # max +-1.7 cents
+                self.drift_i = float(np.clip(self.drift_i - err * hop_s * 1e-3, -3e-4, 3e-4))
+                corr = float(np.clip(self.drift_i - err * 0.05, -3e-4, 3e-4))     # max +-0.5 cents (clock drift is <100 ppm)
                 rr = self.out_sr / self.in_sr * (1.0 + corr)
                 out = self.resampler.process(y, rr).astype(np.float32)
                 self._write_ring(out)

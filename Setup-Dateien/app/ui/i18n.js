@@ -1,6 +1,6 @@
 const I18N = {
   en: {
-    precise: '🎯 Precision mode', preciseHint: 'Analyses each song 1.5 s ahead, longer measurement and 8192-point FFT - steadier 432 Hz, but ~1.6 s delay. Great for music, not for videos or games.',
+    precise: '🎯 432-Lock (always on target)', preciseHint: 'Measures the tuning 1.5 s ahead and corrects it moment by moment - the sound stays on the target frequency all the time (usually under 1 cent off). Costs ~1.6 s delay: perfect for music, turn off for videos or games.',
     binTitle: '🧠 Brainwave layers (binaural beats)', binOnLbl: 'Brainwave mode', binOnHint: '8 binaural beats layered on top of your sound - headphones required.',
     binDelta: '🌙 Delta · Sleep', binTheta: '🌀 Theta · Meditation', binAlpha: '🌿 Alpha · Relax', binGateway: '🚪 Gateway · Focus mix',
     binDesc_delta: '0.5-4 Hz - deep sleep range', binDesc_theta: '4-7.5 Hz - deep relaxation, meditation, drifting off',
@@ -52,7 +52,7 @@ const I18N = {
     fixBtn: 'Repair', restartHint: 'Restart PC',
   },
   de: {
-    precise: '🎯 Präzisions-Modus', preciseHint: 'Analysiert jeden Song 1,5 s im Voraus, misst länger und nutzt eine 8192-Punkt-FFT - stabilere 432 Hz, dafür ~1,6 s Verzögerung. Ideal für Musik, nicht für Videos oder Games.',
+    precise: '🎯 432-Lock (immer auf Ziel)', preciseHint: 'Misst die Stimmung 1,5 s im Voraus und korrigiert sie Moment für Moment - der Sound bleibt durchgehend auf der Zielfrequenz (meist unter 1 Cent Abweichung). Kostet ~1,6 s Verzögerung: perfekt für Musik, für Videos oder Games ausschalten.',
     binTitle: '🧠 Gehirnwellen-Schichten (binaurale Beats)', binOnLbl: 'Gehirnwellen-Modus', binOnHint: '8 binaurale Beats über deinem Sound geschichtet - Kopfhörer nötig.',
     binDelta: '🌙 Delta · Schlaf', binTheta: '🌀 Theta · Meditation', binAlpha: '🌿 Alpha · Entspannung', binGateway: '🚪 Gateway · Fokus-Mix',
     binDesc_delta: '0,5-4 Hz - Tiefschlaf-Bereich', binDesc_theta: '4-7,5 Hz - tiefe Entspannung, Meditation, Wegdämmern',

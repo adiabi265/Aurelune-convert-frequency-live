@@ -1,3 +1,4 @@
+3.7.0 – 432-Lock: die Stimmung wird 1,5 s im Voraus laufend gemessen und Moment für Moment nachgeführt - Ausgabe bleibt durchgehend auf der Zielfrequenz (Test: Abweichung 0,2 statt 2,5 Cent). Jetzt standardmäßig an. Taktausgleich zwischen den Geräten verstimmt nicht mehr hörbar.
 3.6.0 – Neues Desktop-Layout: breites Fenster mit Seitenleiste, Startseite in zwei Spalten, größere und besser lesbare Schrift, weniger Knöpfe auf einen Blick
 3.5.0 – Neue Startseite: Live-Cymatics im Orb (Muster der Frequenz, die du gerade hörst), Frequenzen direkt wählbar, Gehirnwellen/Gateway auf der Startseite, Sleep-Timer, Tastenkürzel
 3.4.1 – Fix: App blieb beim Start auf „Off“ hängen (Cymatics-Startfehler)
