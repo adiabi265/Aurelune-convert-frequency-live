@@ -4,7 +4,7 @@
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.11.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.12.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---
@@ -13,7 +13,7 @@ Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 Aurelune stimmt **jeden Sound in Echtzeit** auf eine Zielfrequenz um – Standard **A4 = 432 Hz** statt 440 Hz
 (außerdem Solfeggio 174 / 285 / 396 / 417 / 528 / 639 / 741 / 852 / 963 Hz und eigene Werte).
-Zusätzlich: **Gehirnwellen-Schichten** (gestapelte binaurale Beats), **Cymatics-Visualizer**, Sleep-Timer.
+Zusätzlich: **Gehirnwellen-Schichten** (gestapelte binaurale Beats), **Cymatics-Visualizer**, Sleep-Timer und seit 3.12 **Playlists** (live erzeugte Musik + Naturklänge, schon auf die Zielfrequenz gestimmt).
 
 Zwei Produkte im Repo:
 
@@ -79,6 +79,27 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 - Auto-Lautstärke (Gateway-Prinzip): Beats ~16 dB unter der Musik, folgen deren Lautstärke. Optional rosa Rauschteppich.
 - Wechsel von Preset/Anzahl blendet über Stille über (2 s Fades, keine Klicks).
 
+## 3b. Playlists (seit 3.12, `ui/v312.js` + `v312.css`)
+
+- Eigener Reiter „Playlists“ (wird per JS in Navigation + `main` eingefügt). 5 Playlists / 21 Stücke:
+  `ambient` 🎹 Ambient Piano, `meditate` 🧘 Meditativ (Klangschalen, Atem 4 s ein / 6 s aus, Tanpura, Om, Lotus),
+  `sleep` 🌙 Tiefschlaf, `celestial` ✨ Himmlische Klänge, `focus` 🎧 Fokus Flow. Katalog = `catalogue()` in `v312.js`.
+- **Keine Audiodateien:** alles wird per Web Audio im App-Fenster live erzeugt (Generatoren pro Stil, Seed-Zufall,
+  Akkordfolge `prog` auf Tonleiter `mode`). Jede Oszillator-Frequenz = `settings.target_a4 × 2^((m−69)/12) × Teilton`
+  -> Musik ist **von Anfang an** auf der Zielfrequenz. Ändert sich das Ziel, gleiten alle klingenden Töne in ~0,5 s mit.
+  Gemessen (Headless-Chromium, FFT): Teiltöne ±1 Cent auf dem 432- bzw. 440-Raster.
+- Klangschalen: Grundton als Paar ±1,5 Cent (Schwebung, Mittelwert bleibt exakt). Klavier: Inharmonizität sehr klein (B = 0,00008).
+- **Naturklänge** pro Playlist wählbar (mehrere gleichzeitig): `sea`, `forest`, `rain`, `stream`, `fire`, `wind`, `night`
+  – aus erzeugtem weißem/rosa/braunem Rauschen + Filtern + zufälligen Ereignissen (Wellen, Tropfen, Vögel, Knistern, Grillen).
+  Standard: Ambient → Regen, Meditativ → Wald, Tiefschlaf → Meer, Himmlisch → Wind, Fokus → Bach.
+- Ein Stück läuft 7 min (`TRACK_LEN`), dann Überblendung zum nächsten. Scheduler-Takt kommt aus einem Web-Worker
+  (läuft auch bei verstecktem Fenster), Look-ahead 1,6 s.
+- Einstellungen (letzte Playlist, Lautstärke Musik/Natur, Naturauswahl) werden über `set_settings({}, {pl: …})` in
+  `settings.json` unter `ui.pl` gespeichert (pywebview hat evtl. kein dauerhaftes localStorage).
+- Ausgabe geht an das Windows-Standardgerät: ist Aurelune an (= VB-CABLE), läuft die Playlist durch die Engine – sie ist
+  schon auf Ziel, also Korrektur ≈ 0. Ist Aurelune aus, direkt auf die Lautsprecher. Sleep-Timer blendet die Playlist in 8 s aus.
+- Test-Hilfe: `window.AurelunePlaylists.play(id, index)` / `.pause()` / `._state()`.
+
 ## 4. Dateien (Studio)
 
 | Datei | Inhalt |
@@ -91,7 +112,7 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 | `updater.py` | In-App-Updates von GitHub (`version.txt` vergleichen, ZIP laden, `installer/update.ps1` starten) |
 | `version.txt`, `CHANGELOG.txt` | Version + Änderungen (die App liest beide von GitHub!) |
 | `ui/index.html`, `app.js`, `style.css`, `desk.css`, `i18n.js`, `frequencies.js`, `update.js` | Oberfläche |
-| `ui/v38.js`, `v39.js`, `v310.js`, `v311.js` (+ `v38.css`, `v311.css`) | Versions-Patches für die UI (Texte, neue Bedienelemente) – werden nach `app.js` geladen |
+| `ui/v38.js`, `v39.js`, `v310.js`, `v311.js`, `v312.js` (+ `v38.css`, `v311.css`, `v312.css`) | Versions-Patches für die UI (Texte, neue Bedienelemente) – werden nach `app.js` geladen |
 | `Setup-Dateien/installer/*.ps1` | Setup (Python, WebView2, VB-CABLE), Update, Deinstallation |
 | `Aurelune-Studio-Setup.exe`, `Aurelune-Update.bat` | Installer-Starter / manuelles Update |
 
@@ -137,6 +158,7 @@ Die `Aurelune-Studio-Setup.exe` muss nur für Neuinstallationen neu gebaut werde
 
 ## 8. Versionsverlauf (Kurz)
 
+- **3.12.0** – Playlists (5 Themen, 21 live erzeugte Stücke, schon auf Zielfrequenz gestimmt) + wählbare Naturklänge pro Playlist.
 - **3.11.0** – Gehirnwellen stapelbar (2/4/7/8/16/32), Preset „Septa · 7 Wellen“ (SeptaSync-Prinzip), Träger als
   27-Hz-Obertöne; 432-Lock nur noch Aus / 0,75 s; Updates installieren sich selbst + Auto-Neustart, Prüfung stündlich.
 - **3.10.0** – Lock-Standard 0,75 s, Abweichung zeigt Song-Durchschnitt + „jetzt“.
@@ -157,3 +179,4 @@ Die `Aurelune-Studio-Setup.exe` muss nur für Neuinstallationen neu gebaut werde
 6. Sleep-Timer mit langsamem Ausblenden.
 7. Gehirnwellen in die Mobile-App (Web Audio).
 8. Lizenz-Geheimwort der Mobile-App ändern (siehe oben).
+9. Playlists: mehr Stücke/Instrumente (Gitarre, Flöte), Playlists in die Mobile-App, eigene Playlists zusammenstellen.
