@@ -1,6 +1,8 @@
 @echo off
-rem Aurelune Studio - Update (keeps settings, Python and VB-CABLE)
-set "SRC=%~dp0Setup-Dateien\installer\update.ps1"
+rem Aurelune Studio - Update: holt die neueste Version von GitHub (behaelt Einstellungen, Python und VB-CABLE).
+rem Ohne Internet wird das lokale Paket verwendet.
+set "SRC=%~dp0Setup-Dateien\installer\github-update.ps1"
+if not exist "%SRC%" set "SRC=%~dp0Setup-Dateien\installer\update.ps1"
 if not exist "%SRC%" set "SRC=%~dp0installer\update.ps1"
 if not exist "%SRC%" (
   echo.
