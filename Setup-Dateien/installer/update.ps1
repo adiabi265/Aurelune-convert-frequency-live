@@ -152,7 +152,7 @@ function Do-Update {
         }
 
         Status (M 'Checking the new version …' 'Prüfe die neue Version …') 0.8
-        $chk = "import sys; sys.path.insert(0, r'$InstallDir'); import dsp, winaudio, wellness; compile(open(r'$InstallDir\app.py', encoding='utf-8').read(), 'app.py', 'exec'); compile(open(r'$InstallDir\engine.py', encoding='utf-8').read(), 'engine.py', 'exec'); compile(open(r'$InstallDir\guard.py', encoding='utf-8').read(), 'guard.py', 'exec')"
+        $chk = "import sys; sys.path.insert(0, r'$InstallDir'); import dsp, winaudio, wellness, gateway; compile(open(r'$InstallDir\app.py', encoding='utf-8').read(), 'app.py', 'exec'); compile(open(r'$InstallDir\engine.py', encoding='utf-8').read(), 'engine.py', 'exec'); compile(open(r'$InstallDir\guard.py', encoding='utf-8').read(), 'guard.py', 'exec')"
         & $VenvPy -c $chk 2>> $LogFile
         if ($LASTEXITCODE -ne 0) { throw (M 'The new version failed the self-test.' 'Die neue Version hat den Selbsttest nicht bestanden.') }
 

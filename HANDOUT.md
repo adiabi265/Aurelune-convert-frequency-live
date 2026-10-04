@@ -4,7 +4,7 @@
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.14.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.15.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---
@@ -122,6 +122,18 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 - **Niedrige Verzögerung**: `low_latency` → Puffer 15 statt 40 ms (Neustart der Engine). Anzeige der Anteile in den Einstellungen (`status.lat_parts`).
 - Profil „voice“ jetzt 2048/8 statt 2048/4.
 
+## 3d. Brainwave-Player + Gateway-Meditation (seit 3.15, `gateway.py` + `ui/v315.js` + `v315.css`)
+
+- **Player-Leiste wie Spotify** (immer unten): Cover, Titel, Live-Hz, ⏮ ▶/⏸ ⏭, Fortschritt (bei Reisen spulbar), Lautstärke (`gw_level`), Titelliste. Auch im Mini-Player (▶/⏸ oben rechts), im Tray und über Medientasten (wenn keine Playlist läuft).
+- **Ein Play-Knopf für alles** (`api.bw_toggle`): pausiert/startet, was gerade läuft – Gateway-Reise (`settings.gw.paused`, Position eingefroren) → Sitzung (`session.paused_at`, Zeit wird beim Weiterspielen nachgeschoben) → Brainwave-Schichten (`binaural`) → Takt (`beat_on`). Läuft nichts, startet die zuletzt genutzte Quelle (`cfg.bw_last`) bzw. die Gateway-Meditation. Schaltet Aurelune bei Bedarf ein.
+- **Skip** (`api.bw_skip(±1)`): Reise = nächster/voriger Abschnitt (zurück: erst Anfang des Abschnitts, wenn > 5 s), Sitzung = nächster Schritt, Schichten = nächstes Preset, Takt = nächste Frequenz. `api.bw_seek(sek)`, `api.bw_play(id, track, pos)`, `api.bw_stop()`, `api.bw_info()`.
+- **Reisen** (`JOURNEYS`): `gateway` 52 min (Einstimmung 10 Hz → Focus 3 → Focus 10 (Theta 4 + Delta 1,5) → Focus 12 (+Gamma 40) → Focus 15 → Focus 21 → Rückkehr 12 Hz), `gateway_short` 25 min, `focus10` 30 min.
+- **7 Schichten gleichzeitig** (`SLOTS`, Träger = Obertöne von 27 Hz): Delta 108, Theta 162, Alpha 216, Ziel binaural 135, **Ziel isochron 270** (gleicher Beat wie Ziel binaural), Schumann/Beta 189, Gamma 324 Hz. Darunter rosa „Brandung“ (Welle alle 10 s, `gw_surf`). Beats/Anteile gleiten (τ 5 s), Pause/Play blendet 1,5 s.
+- `gw_phones` an = binaural (Kopfhörer), aus = monaural (Lautsprecher, beide Töne auf beiden Ohren). Pegel: Boden −40…−12 dBFS RMS über `gw_level`, mit Musik ~14 dB darunter.
+- Engine: nach `Wellness.process`, vor Gehörschutz/Limiter; am Ende setzt die Engine `gw = None`. Status: `status.gw = {now:{id,track,pos,dur,paused}, master, layers:[{key,kind,left,right,beat,share}]}` → Live-Tabelle im Reiter „Meditation“.
+- Ehrlich: Monroe veröffentlicht die genauen Hemi-Sync-Mischungen nicht; Abschnitte folgen den veröffentlichten Bereichen. Wirkung nicht garantiert, kein Medizinprodukt (steht so auch in der App).
+- Getestet (Sandbox): Frequenzen per FFT exakt (z. B. 107,25 / 108,75 Hz bei Delta 1,5), Skip ohne Knacken, ~0,3 ms CPU pro 21-ms-Block, API-Abläufe (Pause/Weiter/Skip/Seek/Sitzung/Schichten), UI ohne JS-Fehler.
+
 ## 4. Dateien (Studio)
 
 | Datei | Inhalt |
@@ -131,6 +143,7 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 | `dsp.py` | DSP: `TuningDetector`, `CenteredTuning`, `PhaseLockedPitchShifter`, `SpectrumProbe`, `SincResampler`, `Limiter`, `BinauralGenerator`, `bin_layers` |
 | `winaudio.py`, `AudioSwitch.cs` | Windows-Standard-Audiogerät lesen/setzen |
 | `guard.py` | Ton-Schutz bei Absturz |
+| `gateway.py` | 3.15: Gateway-/SeptaSync-Reisen, 7 Schichten, Brainwave-Player |
 | `wellness.py` | 3.14: Sitzungen, Fokus-Modulation, Atem, Takt, Tiefschlaf, 8D, Klangschalen, Gehörschutz |
 | `updater.py` | In-App-Updates von GitHub (`version.txt` vergleichen, ZIP laden, `installer/update.ps1` starten) |
 | `version.txt`, `CHANGELOG.txt` | Version + Änderungen (die App liest beide von GitHub!) |
@@ -191,6 +204,7 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 
 ## 8. Versionsverlauf (Kurz)
 
+- **3.15.0** – Brainwave-Player wie Spotify (⏮ ▶/⏸ ⏭, Fortschritt, Lautstärke; ein Play-Knopf für Reise/Sitzung/Schichten/Takt), Reiter „Meditation“ mit Gateway-Reisen (7 Schichten, Isochron + Binaural auf derselben Zielfrequenz, Brandung) und Live-Frequenz-Tabelle.
 - **3.14.0** – Wellness-Reiter: Sitzungen mit Ablauf, Fokus-Modulation, Atem-Coach + Resonanz-Test, Isochron/Monaural, 40 Hz + Licht-Flackern, Tiefschlaf-Rauschen, 8D, Klangschalen/Gongs, Tagesroutinen, Gehörschutz; 3D-Cymatics-Vollbild, Mini-Player, Tray, Medientasten, Song-Zeile 440 → 432, Low-Latency.
 
 - **3.13.0** – Live-Updates: Hintergrund-Updater (alle 3 min, auch bei geschlossenem Fenster), App prüft alle 3 min; neues Online-Setup-EXE (`SetupStub.cs`), Root aufgeräumt (`README.md`, `Aurelune-Update.bat` entfernt).
@@ -209,7 +223,7 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 Erledigt in 3.14: Abläufe mit Frequenzverlauf, Isochron/Monaural, 40 Hz, braunes Rauschen, Klangschalen, Sleep mit Ausblenden.
 Bewusst **nicht** gebaut (Adrians Wunsch): Wirkungs-Tagebuch.
 
-1. 3.14 auf Adrians PC prüfen: Tray (pystray), Mini-Player-Größe, Medientasten in WebView2, 8D-Klang mit echter Musik.
+1. 3.15 auf Adrians PC prüfen: Player-Leiste, Gateway-Reise mit Kopfhörern, Medientasten. 3.14 prüfen: Tray (pystray), Mini-Player-Größe, Medientasten in WebView2, 8D-Klang mit echter Musik.
 2. **Eigener Mix**: Beats/Träger/Anzahl frei wählen und speichern; eigene Sitzungen bauen.
 3. Gehirnwellen + Sitzungen in die Mobile-App (Web Audio).
 4. Lizenz-Geheimwort der Mobile-App ändern (siehe oben).

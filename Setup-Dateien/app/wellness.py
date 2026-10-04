@@ -364,9 +364,12 @@ class Wellness:
         # 2) added sounds: beat (session / isochronic / 40 Hz), sleep noise, bowls
         beat_on, beat_hz, mode, sg = bool(s.get('beat_on')), float(s.get('beat_hz', 10.0)), s.get('beat_mode', 'isochronic'), 1.0
         if sinfo:
-            el = t_play - float(ses.get('t0') or t_play)
+            pa = ses.get('paused_at')
+            el = (float(pa) if pa else t_play) - float(ses.get('t0') or t_play)
             b, sg, step, done = session_beat(ses['id'], el)
-            self.ses = {'id': ses['id'], 'beat': b, 'step': step, 'elapsed': el, 'total': int(sum(x[0] for x in sinfo['steps']))}
+            if pa:
+                sg, done = 0.0, False
+            self.ses = {'id': ses['id'], 'beat': b, 'step': step, 'elapsed': el, 'paused': bool(pa), 'total': int(sum(x[0] for x in sinfo['steps']))}
             if done:
                 self.done = ses['id']
             beat_on, beat_hz, mode = True, b, sinfo.get('mode') or ses.get('mode') or mode

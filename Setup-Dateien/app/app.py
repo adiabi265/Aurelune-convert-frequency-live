@@ -87,6 +87,7 @@ class Api:
         self._mini = False
         st = self._engine.settings          # a session never survives a restart
         st['session'] = None
+        st['gw'] = None
         st['sleep_t0'] = time.time() if st.get('sleep_on') else 0.0
         st['breath_t0'] = time.time()
         threading.Thread(target=self._routine_loop, daemon=True).start()
@@ -431,6 +432,138 @@ class Api:
         threading.Thread(target=self._engine.well.bowls.strike, args=(float(freq), kind, float(level)), daemon=True).start()
         return {'ok': True}
 
+    # ---------- 3.15 brainwave player (Spotify-like: play/pause, skip, seek) ----------
+    def _bw_playing(self):
+        st = self._engine.settings
+        g, ses = st.get('gw'), st.get('session')
+        if isinstance(g, dict):
+            return not g.get('paused')
+        if isinstance(ses, dict):
+            return not ses.get('paused_at')
+        return bool(st.get('binaural') or st.get('beat_on'))
+
+    @safe
+    def bw_info(self):
+        import gateway
+        return {'ok': True, **gateway.info(), 'last': self._cfg.get('bw_last')}
+
+    def _bw_set(self, patch, external=False):
+        (self._apply if external else self.set_settings)(patch)
+        return {'ok': True, 'settings': self._engine.settings}
+
+    def _gw_pos(self, g):
+        return float(g.get('pos0', 0.0)) + (0.0 if g.get('paused') else time.time() - float(g.get('t0') or time.time()))
+
+    @safe
+    def bw_play(self, jid='gateway', track=0, pos=0.0, external=False):
+        import gateway
+        if jid not in gateway.JOURNEYS:
+            return {'ok': False, 'code': 'E_GENERIC', 'error': 'unknown journey'}
+        if not self._engine.running:
+            r = self.power_on()
+            if not r or r.get('ok') is False:
+                return r
+        n = len(gateway.JOURNEYS[jid]['tracks'])
+        track = min(max(0, int(track or 0)), n - 1)
+        self._cfg['bw_last'] = {'src': 'gw', 'id': jid}
+        return self._bw_set({'gw': {'id': jid, 'track': track, 'pos0': max(0.0, float(pos or 0)), 't0': time.time(), 'paused': False},
+                             'session': None, 'binaural': False, 'beat_on': False}, external)
+
+    @safe
+    def bw_toggle(self, external=False):
+        """The one play/pause button: pauses / resumes whatever brainwave sound is playing right now."""
+        st = self._engine.settings
+        now = time.time()
+        g = st.get('gw')
+        if isinstance(g, dict):
+            if g.get('paused'):
+                if not self._engine.running:
+                    self.power_on()
+                return self._bw_set({'gw': {**g, 'paused': False, 't0': now}}, external)
+            return self._bw_set({'gw': {**g, 'paused': True, 'pos0': self._gw_pos(g)}}, external)
+        ses = st.get('session')
+        if isinstance(ses, dict):
+            if ses.get('paused_at'):
+                ns = {k: v for k, v in ses.items() if k != 'paused_at'}
+                ns['t0'] = float(ses.get('t0') or now) + now - float(ses['paused_at'])
+                return self._bw_set({'session': ns}, external)
+            return self._bw_set({'session': {**ses, 'paused_at': now}}, external)
+        if st.get('binaural'):
+            self._cfg['bw_last'] = {'src': 'layers'}
+            return self._bw_set({'binaural': False}, external)
+        if st.get('beat_on'):
+            self._cfg['bw_last'] = {'src': 'beat'}
+            return self._bw_set({'beat_on': False}, external)
+        last = self._cfg.get('bw_last') or {}
+        if not self._engine.running:
+            r = self.power_on()
+            if not r or r.get('ok') is False:
+                return r
+        if last.get('src') == 'layers':
+            return self._bw_set({'binaural': True}, external)
+        if last.get('src') == 'beat':
+            return self._bw_set({'beat_on': True}, external)
+        return self.bw_play(last.get('id') or 'gateway', 0, 0.0, external)
+
+    @safe
+    def bw_skip(self, d=1, external=False):
+        """Next / previous: journey track, session step, layer preset or beat frequency."""
+        import gateway
+        import wellness
+        st = self._engine.settings
+        d = 1 if int(d or 1) > 0 else -1
+        now = time.time()
+        g = st.get('gw')
+        if isinstance(g, dict) and g.get('id') in gateway.JOURNEYS:
+            n = len(gateway.JOURNEYS[g['id']]['tracks'])
+            tr = int(g.get('track', 0))
+            if d < 0 and self._gw_pos(g) > 5:
+                pass                                   # like Spotify: first press = back to the start of the track
+            else:
+                tr += d
+            if tr >= n:
+                return self._bw_set({'gw': None}, external)
+            return self._bw_set({'gw': {**g, 'track': max(0, tr), 'pos0': 0.0, 't0': now}}, external)
+        ses = st.get('session')
+        if isinstance(ses, dict) and ses.get('id') in wellness.SESSIONS:
+            steps = [x[0] for x in wellness.SESSIONS[ses['id']]['steps']]
+            ref = float(ses.get('paused_at') or now)
+            el = ref - float(ses.get('t0') or now)
+            starts = [sum(steps[:i]) for i in range(len(steps))]
+            i = max(i for i, a in enumerate(starts) if a <= el + 0.01)
+            if d < 0 and el - starts[i] > 5:
+                tgt = starts[i]
+            else:
+                j = i + d
+                if j >= len(steps):
+                    return self._bw_set({'session': None}, external)
+                tgt = starts[max(0, j)]
+            return self._bw_set({'session': {**ses, 't0': ref - tgt}}, external)
+        if st.get('binaural'):
+            order = ['delta', 'theta', 'alpha', 'gateway', 'septa']
+            cur = st.get('bin_preset') if st.get('bin_preset') in order else 'gateway'
+            return self._bw_set({'bin_preset': order[(order.index(cur) + d) % len(order)]}, external)
+        if st.get('beat_on'):
+            order = [2.0, 4.0, 6.0, 7.83, 10.0, 16.0, 40.0]
+            cur = float(st.get('beat_hz', 10.0))
+            i = min(range(len(order)), key=lambda k: abs(order[k] - cur))
+            return self._bw_set({'beat_hz': order[(i + d) % len(order)]}, external)
+        return self.bw_play('gateway', 0 if d > 0 else 0, 0.0, external)
+
+    @safe
+    def bw_seek(self, pos, track=None):
+        g = self._engine.settings.get('gw')
+        if not isinstance(g, dict):
+            return {'ok': False}
+        ng = {**g, 'pos0': max(0.0, float(pos)), 't0': time.time()}
+        if track is not None:
+            ng['track'] = int(track)
+        return self._bw_set({'gw': ng})
+
+    @safe
+    def bw_stop(self, external=False):
+        return self._bw_set({'gw': None}, external)
+
     def _routines(self):
         r = self._cfg.get('routines')
         if not isinstance(r, dict):
@@ -741,6 +874,10 @@ def start_tray(api):
         I(L('Sitzung starten', 'Start session'), M(I(L('🎯 Fokus', '🎯 Focus'), ses('focus')), I(L('🌿 Entspannen', '🌿 Relax'), ses('relax')),
                                                      I(L('🧘 Meditation', '🧘 Meditation'), ses('meditate')), I(L('🌙 Einschlafen', '🌙 Fall asleep'), ses('sleep')),
                                                      I(L('⏹ Sitzung beenden', '⏹ Stop session'), lambda i, it: api.stop_session(external=True)))),
+        I(lambda it: L('⏸ Brainwave pausieren', '⏸ Pause brainwave') if api._bw_playing() else L('▶ Brainwave abspielen', '▶ Play brainwave'),
+          lambda i, it: api.bw_toggle(external=True)),
+        I(L('⏭ Nächster Abschnitt', '⏭ Next part'), lambda i, it: api.bw_skip(1, external=True)),
+        I(L('🌀 Gateway-Meditation starten', '🌀 Start Gateway meditation'), lambda i, it: api.bw_play('gateway', 0, 0.0, external=True)),
         I(L('Fokus-Modulation', 'Focus modulation'), modt, checked=lambda it: bool(api._engine.settings.get('mod_on'))),
         I(L('Mini-Player', 'Mini player'), lambda i, it: (api.show_window(), api.mini(not api._mini))),
         M.SEPARATOR,

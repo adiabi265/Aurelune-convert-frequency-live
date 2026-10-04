@@ -16,6 +16,7 @@ import sounddevice as sd
 
 from dsp import PhaseLockedPitchShifter, SincResampler, SpectrumProbe, Limiter, BinauralGenerator, TuningDetector, CenteredTuning
 from wellness import Wellness
+from gateway import GatewayPlayer
 
 PROFILES = {'music': (4096, 8), 'voice': (2048, 8), 'precision': (8192, 8)}   # 3.14: voice 2048/8 = cleaner speech
 
@@ -78,7 +79,9 @@ class Engine:
                          'sleep_on': False, 'sleep_color': 'pink', 'sleep_level': 0.3, 'sleep_pulses': True, 'sleep_delay': 30, 'sleep_t0': 0.0,
                          'space_on': False, 'space_period': 12.0, 'space_depth': 0.8,
                          'ear_on': True, 'ear_max_db': -10.0, 'ear_tame': True,
-                         'low_latency': False}
+                         'low_latency': False,
+                         # 3.15 brainwave player (gateway.py)
+                         'gw': None, 'gw_level': 0.5, 'gw_phones': True, 'gw_surf': 0.5}
         self.running = False
         self.lock = threading.Lock()
         self.istream = self.ostream = None
@@ -142,6 +145,7 @@ class Engine:
         self.limiter = Limiter()
         self.binaural = BinauralGenerator(self.in_sr)
         self.well = Wellness(self.in_sr)
+        self.gw = GatewayPlayer(self.in_sr)
         self.resampler = SincResampler(2, self.out_sr / self.in_sr)
         self.q = queue.Queue(maxsize=800)
         self.ring = np.zeros((2, self.out_sr * 2), dtype=np.float32)
@@ -307,6 +311,12 @@ class Engine:
                 y = self.well.process(y, s, time.time() + self.play_lag, self.mus_rms)   # 3.14 wellness
                 if self.well.done and isinstance(s.get('session'), dict) and s['session'].get('id') == self.well.done:
                     s['session'] = None
+                if s.get('gw') or self.gw.active:                                          # 3.15 gateway journey
+                    z = self.gw.process(y.shape[1], s, time.time() + self.play_lag, self.mus_rms)
+                    if z is not None:
+                        y = y + z
+                    if self.gw.done and s.get('gw'):
+                        s['gw'] = None
                 y = self.well.guard(y, s)                                                  # hearing protection
                 y = self.limiter.process(y)
                 # clock drift compensation between the two devices
@@ -369,6 +379,7 @@ class Engine:
         r['in_a4'], r['in_conf'] = float(ie), float(ic)
         r['bin_level_eff'] = float(self.bin_eff)
         r['well'] = self.well.status(self.settings, time.time())
+        r['gw'] = self.gw.status(self.settings)
         r['lat_parts'] = {'lock': self.look / self.in_sr * 1000, 'fft': self.shifter.N / self.in_sr * 1000,
                           'buffer': self.target_fill / self.out_sr * 1000, 'low': bool(self.settings.get('low_latency'))}
         r['binaural'] = {'on': bool(self.settings.get('binaural')), 'preset': self.binaural.preset,
