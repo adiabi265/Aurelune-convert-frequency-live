@@ -1,3 +1,4 @@
+3.6.0 – Neues Desktop-Layout: breites Fenster mit Seitenleiste, Startseite in zwei Spalten, größere und besser lesbare Schrift, weniger Knöpfe auf einen Blick
 3.5.0 – Neue Startseite: Live-Cymatics im Orb (Muster der Frequenz, die du gerade hörst), Frequenzen direkt wählbar, Gehirnwellen/Gateway auf der Startseite, Sleep-Timer, Tastenkürzel
 3.4.1 – Fix: App blieb beim Start auf „Off“ hängen (Cymatics-Startfehler)
 3.4.0 – Automatische Updates direkt in der App (GitHub)

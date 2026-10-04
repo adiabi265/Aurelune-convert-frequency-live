@@ -546,7 +546,7 @@ def run_browser_ui(api):
         for p in (r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe', r'C:\Program Files\Microsoft\Edge\Application\msedge.exe'):
             if os.path.exists(p):
                 prof = os.path.join(APP_DIR, 'edge-profile')
-                subprocess.Popen([p, f'--app={url}', '--window-size=500,960', f'--user-data-dir={prof}', '--no-first-run'])
+                subprocess.Popen([p, f'--app={url}', '--window-size=1180,780', f'--user-data-dir={prof}', '--no-first-run'])
                 opened = True
                 break
     if not opened:
@@ -610,7 +610,7 @@ def main():
         return
     try:
         window = webview.create_window(TITLE, resource(os.path.join('ui', 'index.html')), js_api=api,
-                                       width=500, height=960, min_size=(460, 720), background_color='#0e0c16',
+                                       width=1180, height=780, min_size=(900, 620), background_color='#0e0c16',
                                        minimized=minimized)
         api._window = window
         window.events.closing += lambda: (api.power_off(remember=False), None)[1]  # pywebview needs a hashable return

@@ -1,0 +1,85 @@
+/* ===== Aurelune 3.6 – desktop layout, larger & clearer type ===== */
+body.desk { --mut:#c3bdd6; --line:rgba(255,255,255,.11); --card:rgba(255,255,255,.055); flex-direction:row; font-size:15px; line-height:1.5; }
+body.desk #oldEngine { position:absolute; }
+/* sidebar */
+.desk .side { width:220px; flex:none; display:flex; flex-direction:column; padding:22px 14px 16px; border-right:1px solid var(--line); background:rgba(10,8,16,.6); backdrop-filter:blur(14px); position:relative; z-index:2; }
+.desk .side .brand { padding:0 8px 26px; }
+.desk .side .brand img { width:40px; height:40px; }
+.desk .side h1 { font-size:21px; }
+.desk .tabs { display:flex; flex-direction:column; gap:4px; padding:0; border:0; background:none; backdrop-filter:none; }
+.desk .tabs button { flex-direction:row; justify-content:flex-start; gap:12px; padding:11px 14px; font-size:15px; font-weight:600; color:var(--mut); border-radius:12px; }
+.desk .tabs button.active { color:var(--fg); background:rgba(245,185,113,.13); box-shadow:inset 3px 0 0 var(--acc); }
+.desk .tabs button.active svg { color:var(--acc); }
+.desk .tabs .dot { top:50%; right:14px; margin-top:-4px; }
+.desk .side-foot { margin-top:auto; padding:0 6px; }
+.desk .side-foot .top-r { flex-direction:column; align-items:stretch; gap:8px; }
+.desk .side-foot .chip { justify-content:center; padding:8px 12px; font-size:13.5px; }
+.desk .side-foot .lang { padding:7px; font-size:13px; }
+/* main area */
+.desk main { padding:26px 34px 30px; }
+.desk .view h2 { font-size:26px; margin:0 0 6px; }
+.desk .muted-p { font-size:14.5px; color:var(--mut); max-width:760px; }
+.desk .card { padding:18px 20px; border-radius:18px; margin-top:16px; }
+.desk .card-head b, .desk .bin-head b, .desk .set-row b { font-size:16px; }
+.desk .bin-head small, .desk .set-row small { font-size:13.5px; color:var(--mut); }
+.desk .verdict { font-size:13px; }
+/* home dashboard */
+.desk .home-grid { display:grid; grid-template-columns:minmax(380px,1fr) minmax(360px,460px); gap:34px; align-items:start; max-width:1240px; margin:0 auto; }
+.desk .col-main { display:flex; flex-direction:column; align-items:center; padding-top:8px; }
+.desk .col-side > .card:first-child, .desk .col-side > .alert:first-child + .card { margin-top:0; }
+.desk .orb-wrap { width:300px; height:300px; margin:0 auto; }
+.desk .orb-hz { font-size:72px; } .desk .orb-unit { font-size:17px; } .desk .orb-state { font-size:14px; } .desk .orb-cap { font-size:12px; }
+.desk .cym-line { font-size:14px; margin-top:12px; color:var(--mut); }
+.desk .freq-pill { font-size:16px; padding:10px 20px; margin-top:12px; }
+.desk .fchips { display:grid; grid-template-columns:repeat(4,1fr); overflow:visible; margin:18px 0 0; padding:0; gap:9px; width:100%; max-width:500px; }
+.desk .fchip { min-width:0; padding:9px 6px; }
+.desk .fchip .e { font-size:19px; } .desk .fchip b { font-size:16px; } .desk .fchip small { font-size:12px; max-width:100%; }
+.desk .fdesc-line { font-size:14.5px; max-width:560px; min-height:44px; margin-top:12px; }
+.desk .ab { max-width:420px; font-size:14.5px; margin-top:14px; padding:13px; }
+.desk .quick-custom { margin-top:12px; }
+/* measurement card */
+.desk .facts { gap:10px; } .desk .facts div { padding:11px 13px; }
+.desk .facts small { font-size:12.5px; } .desk .facts b { font-size:20px; }
+.desk details.more > summary { font-size:14px; padding-top:10px; }
+.desk .hint, .desk .peak { font-size:13.5px; }
+.desk .levels small, .desk .legend { font-size:12.5px; }
+/* brainwaves + timer */
+.desk .seg button { padding:10px; font-size:14.5px; }
+.desk .seg.small button { padding:7px 14px; font-size:14px; }
+.desk .bin-desc { font-size:13.5px; color:var(--mut); display:block; margin-top:10px; }
+.desk .bin-slider { grid-template-columns:120px 1fr 48px; font-size:14px; margin-top:12px; }
+.desk .bin-det { margin-top:8px; }
+.desk .bin-note, .desk .disclaimer { font-size:13px; }
+.desk .card.slim .bin-head { flex-wrap:wrap; gap:10px; }
+/* frequencies + settings use the width */
+.desk .flist { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:12px; margin-top:16px; }
+.desk .fitem { padding:15px 16px; } .desk .fhz { font-size:19px; } .desk .fdesc { font-size:13.5px; }
+.desk #view-freq, .desk #view-settings { max-width:1240px; margin:0 auto; }
+.desk #view-settings.active { columns:2 430px; column-gap:20px; }
+.desk #view-settings > h2 { column-span:all; }
+.desk #view-settings .card { break-inside:avoid; display:inline-block; width:100%; margin-top:0; margin-bottom:18px; }
+.desk .ck { font-size:14px; } .desk .ck b { max-width:260px; }
+.desk input[type=number], .desk select { font-size:14px; padding:9px 11px; }
+.desk .btn { font-size:14.5px; } .desk .link { font-size:13.5px; } .desk .lbl { font-size:13px; }
+.desk .route { font-size:13px; margin-top:10px; text-align:left; }
+.desk .keys-hint { font-size:13px; }
+.desk .toast { font-size:14px; }
+/* smaller windows: compact icon sidebar, single column */
+@media (max-width:1020px) {
+  .desk .side { width:76px; padding:18px 10px; }
+  .desk .side .brand > div, .desk .tabs span { display:none; }
+  .desk .side .brand { padding:0 0 22px; justify-content:center; }
+  .desk .tabs button { justify-content:center; padding:12px; }
+  .desk .side-foot .chip span { display:none; }
+  .desk main { padding:22px 24px; }
+  .desk .home-grid { grid-template-columns:1fr 360px; gap:22px; }
+  .desk .orb-wrap { width:290px; height:290px; }
+}
+@media (max-width:760px) { .desk .home-grid { grid-template-columns:1fr; } }
+
+.desk .card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.desk #binCard .bin-head { align-items:center; }
+.desk #binState { display:inline-block; margin-top:12px; }
+.desk #binCard:not(.on) #binState { display:none; }
+.desk #freqPill { display:none; }
+.desk .upd-check { font-size:13.5px; padding:7px 16px; }
