@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="de"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0d0b14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Aurelune">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Aurelune</title>
+<link rel="stylesheet" href="style.css">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+</head><body>
+<div class="aurora"></div>
+<header class="top">
+  <div class="brand"><img src="icons/icon-192.png" alt=""><div><h1>Aurelune</h1><div class="sub" id="planBadge">Free</div></div></div>
+  <button class="crown" id="crownBtn" aria-label="Premium">👑</button>
+</header>
+
+<main>
+<!-- MUSIK -->
+<section class="view active" id="view-music">
+  <div class="orb-wrap">
+    <canvas id="orbCanvas" width="600" height="600"></canvas>
+    <button id="orb" class="orb" aria-label="Abspielen">
+      <span class="orb-hz" id="orbHz">432</span><span class="orb-unit">Hz</span>
+      <span class="orb-icon" id="orbIcon">▶</span>
+    </button>
+  </div>
+  <div class="now">
+    <div class="now-title" id="nowTitle">Keine Musik ausgewählt</div>
+    <div class="now-sub" id="nowSub">Füge Songs von deinem Handy hinzu</div>
+  </div>
+  <div class="seek"><span id="tCur">0:00</span><input type="range" id="seek" min="0" max="1000" value="0"><span id="tDur">0:00</span></div>
+  <div class="controls">
+    <button id="prev" class="ctl">⏮</button>
+    <button id="freqPill" class="freq-pill"><span id="pillEmoji">🎻</span><span id="pillName">432 Hz · Harmonie</span></button>
+    <button id="next" class="ctl">⏭</button>
+  </div>
+  <div class="seg" id="modeSeg">
+    <button data-v="rein">✨ Rein<small>verlustfrei · Hintergrund</small></button>
+    <button data-v="pitch">🎚️ Pitch-Shift<small>Tempo bleibt</small></button>
+  </div>
+  <div class="card">
+    <div class="card-head"><b>Bibliothek</b><label class="btn small" for="fileIn">＋ Musik hinzufügen</label></div>
+    <input type="file" id="fileIn" accept="audio/*,.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus" multiple hidden>
+    <div id="lib" class="lib"></div>
+    <div id="libEmpty" class="empty">🎵 Tippe auf „Musik hinzufügen“ und wähle Songs aus deinen Dateien. Aurelune misst automatisch die Original-Stimmung jedes Songs.</div>
+  </div>
+</section>
+
+<!-- LIVE -->
+<section class="view" id="view-live">
+  <h2>Live-Modus</h2>
+  <p class="muted-p">Alles, was dein Handy-Mikrofon hört – Instrumente, Stimmen, Lautsprecher im Raum – live in deiner Frequenz auf die Kopfhörer.</p>
+  <div class="live-card card">
+    <button id="liveBtn" class="live-btn"><span id="liveIcon">🎙️</span><span id="liveText">Live starten</span></button>
+    <div class="levels"><small>Pegel</small><div class="bar"><i id="liveLvl"></i></div></div>
+    <p class="hint">🎧 Bitte Kopfhörer benutzen – sonst entsteht eine Rückkopplung (Pfeifen).</p>
+  </div>
+  <div class="card info-card">
+    <b>Warum nicht jeder Sound auf dem Handy?</b>
+    <p>iPhone und Android erlauben keiner App, den Ton anderer Apps (Spotify, YouTube, Anrufe) zu verändern – das ist aus Sicherheitsgründen gesperrt. Deshalb spielt Aurelune deine Musik selbst ab bzw. nutzt den Live-Modus. Für den kompletten PC-Sound gibt es <b>Aurelune Studio</b> für Windows/Mac.</p>
+  </div>
+</section>
+
+<!-- FREQUENZEN -->
+<section class="view" id="view-freq">
+  <h2>Frequenzen</h2>
+  <p class="muted-p">432 Hz ist kostenlos. Alle Solfeggio-Frequenzen und eigene Frequenzen gibt es mit <b>Premium</b>.</p>
+  <div id="freqList" class="flist"></div>
+  <div class="card custom">
+    <div class="card-head"><b>🎚️ Eigene Frequenz</b><span class="lock-tag" id="customLock">👑 Premium</span></div>
+    <div class="row"><input id="custom" type="number" inputmode="decimal" min="20" max="2000" step="0.1" placeholder="z. B. 440"><span>Hz</span><button id="customGo" class="btn">OK</button></div>
+  </div>
+  <p class="disclaimer">Die beschriebenen Wirkungen beruhen auf Tradition &amp; Erfahrungsberichten, nicht auf wissenschaftlichen Belegen.</p>
+</section>
+
+<!-- PROFIL -->
+<section class="view" id="view-me">
+  <h2>Premium</h2>
+  <div class="premium-hero card">
+    <div class="ph-crown">👑</div>
+    <div class="ph-title" id="phTitle">Aurelune Premium</div>
+    <div class="ph-price" id="phPrice"></div>
+    <ul class="perks">
+      <li>✨ Alle 9 Solfeggio-Frequenzen (174 – 963 Hz)</li>
+      <li>🎚️ Eigene Frequenzen frei wählbar</li>
+      <li>🎙️ Live-Modus in jeder Frequenz</li>
+      <li>💛 Unterstützt die Weiterentwicklung</li>
+    </ul>
+    <button id="buyBtn" class="btn wide big">Premium freischalten</button>
+    <div class="row code-row"><input id="codeIn" type="text" placeholder="Lizenzcode, z. B. AUR-XXXXX-XXXXX" autocapitalize="characters"><button id="codeGo" class="btn ghost">Einlösen</button></div>
+    <div id="codeMsg" class="hint"></div>
+  </div>
+  <div class="card">
+    <div class="set-row"><div><b>Original-Stimmung automatisch messen</b><small>Bei 442/443-Hz-Aufnahmen exakt korrigieren</small></div><label class="switch"><input type="checkbox" id="autoMeasure" checked><span></span></label></div>
+    <div class="set-row"><div><b>App installieren</b><small id="installHint">Zum Home-Bildschirm hinzufügen</small></div><button id="installBtn" class="btn small ghost">Installieren</button></div>
+  </div>
+  <p class="disclaimer" id="ver">Aurelune Mobile 1.0</p>
+</section>
+</main>
+
+<nav class="tabs">
+  <button data-view="music" class="active"><span>🎵</span>Musik</button>
+  <button data-view="live"><span>🎙️</span>Live</button>
+  <button data-view="freq"><span>〰️</span>Frequenzen</button>
+  <button data-view="me"><span>👑</span>Premium</button>
+</nav>
+
+<div class="sheet-bg" id="sheetBg" hidden>
+  <div class="sheet">
+    <div class="ph-crown">👑</div>
+    <b id="sheetTitle">Premium-Frequenz</b>
+    <p id="sheetText">Diese Frequenz ist Teil von Aurelune Premium.</p>
+    <button class="btn wide big" id="sheetGo">Premium ansehen</button>
+    <button class="btn wide ghost" id="sheetClose">Später</button>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<audio id="elRein" preload="auto" playsinline></audio>
+<audio id="elPitch" preload="auto" playsinline></audio>
+<script src="config.js"></script>
+<script src="frequencies.js"></script>
+<script src="app.js"></script>
+</body></html>

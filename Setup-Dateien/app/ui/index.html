@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aurelune Studio</title><link rel="icon" href="icon.png" type="image/png"><link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="aurora"></div>
+<div id="oldEngine" hidden style="padding:30px;font:14px Segoe UI">This window uses an outdated browser engine. Please run the Aurelune installer again (it installs Microsoft WebView2) or start Aurelune with Microsoft Edge.</div>
+<script>/* ES5 guard: the legacy IE engine cannot run the app */ try { eval('(async () => {})'); } catch (e) { document.getElementById('oldEngine').hidden = false; }</script>
+
+<header class="top">
+  <div class="brand"><img src="icon.png" alt=""><div><h1>Aurelune</h1><div class="sub">Studio</div></div></div>
+  <div class="top-r">
+    <button id="langBtn" class="lang" title="Language">EN</button>
+    <div id="chip" class="chip"><i></i><span data-i18n="off">Off</span></div>
+  </div>
+</header>
+
+<main>
+  <!-- HOME -->
+  <section class="view active" id="view-home">
+    <div class="orb-wrap">
+      <canvas id="orbCanvas" width="680" height="680"></canvas>
+      <button id="orb" class="orb" aria-label="On/Off"><canvas id="cymCanvas" width="440" height="440"></canvas>
+        <span class="orb-hz" id="orbHz">432</span><span class="orb-unit">Hz</span>
+        <span class="orb-cap" id="orbCap" data-i18n="target">target</span>
+        <span class="orb-state" id="orbState" data-i18n="tapStart">Click to start</span>
+      </button>
+    </div>
+    <button id="freqPill" class="freq-pill"><span id="pillEmoji">🎻</span><span id="pillName">Natural Tuning</span><span class="chev">›</span></button>
+
+    <div id="alert" class="alert" hidden><div id="alertText"></div><div class="alert-btns" id="alertBtns"></div></div>
+
+    <div class="card proof">
+      <div class="card-head"><b data-i18n="proofTitle">Proof – measured in what you hear</b><span id="verdict" class="verdict">–</span></div>
+      <div class="facts">
+        <div><small data-i18n="fOrig">Original (input)</small><b id="fIn">–</b></div>
+        <div class="hl"><small data-i18n="fOut">You hear (output)</small><b id="fOut">–</b></div>
+        <div><small data-i18n="fDev">Deviation from target</small><b id="fDev">–</b></div>
+      </div>
+      <div class="fp-wrap">
+        <div class="mini-head"><span data-i18n="fpTitle">Tuning fingerprint</span><small data-i18n="fpHint">where the tones really are</small></div>
+        <canvas id="fp" width="920" height="210"></canvas>
+      </div>
+      <div class="spec-wrap">
+        <div class="mini-head"><span data-i18n="specTitle">Live spectrum</span><small id="specHint"></small></div>
+        <canvas id="spec" width="920" height="300"></canvas>
+        <div class="legend"><span class="lg-out" data-i18n="lgOut">output</span><span class="lg-in" data-i18n="lgIn">original</span><span class="lg-grid" id="lgGrid">432 Hz grid</span><span class="lg-440" data-i18n="lg440">440 Hz grid</span></div>
+      </div>
+      <div class="peak" id="peakLine">–</div>
+      <div class="hint" id="anaText" data-i18n="anaOff">Turn Aurelune on to measure.</div>
+      <div class="levels"><div><small data-i18n="lvIn">Input</small><div class="bar"><i id="lvIn"></i></div></div><div><small data-i18n="lvOut">Output</small><div class="bar"><i id="lvOut"></i></div></div></div>
+    </div>
+    <button id="ab" class="ab" disabled data-i18n="abIdle">Hold: hear the original</button>
+    <div class="route muted" id="routeLine"></div>
+  </section>
+
+  <!-- FREQUENCIES -->
+  <section class="view" id="view-freq">
+    <h2 data-i18n="chooseFreq">Choose frequency</h2>
+    <p class="muted-p" data-i18n="chooseFreqP">Music is shifted by the smallest possible amount so this frequency becomes an exact note – clean and without distortion.</p>
+    <div id="freqList" class="flist"></div>
+    <div class="card custom">
+      <div class="card-head"><b data-i18n="customFreq">🎚️ Custom frequency</b></div>
+      <div class="row"><input id="custom" type="number" min="20" max="2000" step="0.1" placeholder="440"><span>Hz</span><button id="customGo" class="btn" data-i18n="apply">Apply</button></div>
+    </div>
+    <div class="card bin" id="binCard">
+      <div class="card-head"><b data-i18n="binTitle">🧠 Brainwave layers</b><span id="binState" class="verdict">–</span></div>
+      <div class="set-row"><div><b data-i18n="binOnLbl">Brainwave mode</b><small data-i18n="binOnHint">8 binaural beats layered on your sound</small></div>
+        <label class="switch"><input type="checkbox" id="binOn"><span></span></label></div>
+      <div class="seg" id="binSeg"><button data-v="delta" data-i18n="binDelta">Delta</button><button data-v="theta" data-i18n="binTheta">Theta</button><button data-v="alpha" data-i18n="binAlpha">Alpha</button><button data-v="gateway" data-i18n="binGateway">Gateway</button></div>
+      <small class="bin-desc" id="binDesc"></small>
+      <div class="bin-layers" id="binLayers"></div>
+      <div class="bin-slider"><label data-i18n="binLevel">Volume</label><input type="range" id="binLevel" min="0" max="50" step="1"><span id="binLevelV"></span></div>
+      <div class="bin-slider"><label data-i18n="binNoise">Pink noise</label><input type="range" id="binNoise" min="0" max="100" step="1"><span id="binNoiseV"></span></div>
+      <p class="bin-note" data-i18n="binHead">Use headphones</p>
+      <p class="disclaimer" data-i18n="binDisc"></p>
+    </div>
+    <p class="disclaimer" data-i18n="disclaimer">The described effects are based on tradition and personal reports, not on scientific evidence.</p>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-settings">
+    <h2 data-i18n="settings">Settings</h2>
+
+    <div class="card">
+      <div class="card-head"><b data-i18n="sysCheck">System check</b><button id="recheck" class="link" data-i18n="recheck">Check again</button></div>
+      <div class="checks" id="checks"></div>
+      <button id="fixBtn" class="btn wide" data-i18n="fixAuto" hidden>Repair automatically</button>
+    </div>
+
+    <div class="card">
+      <div class="set-row col"><div><b data-i18n="mainOut">Main speaker (where Aurelune plays)</b><small data-i18n="mainOutHint">Pick your EQ device, e.g. “SteelSeries Sonar – Gaming”, so your equalizer keeps working.</small></div></div>
+      <select id="outDev"></select>
+      <div class="set-row"><div><b data-i18n="autoIn">Input automatic (CABLE Output)</b><small data-i18n="autoInHint">All PC sound goes into VB-CABLE, Aurelune picks it up there.</small></div>
+        <label class="switch"><input type="checkbox" id="autoDev"><span></span></label></div>
+      <div id="manualDev" hidden>
+        <label class="lbl" data-i18n="inputLbl">Input (virtual cable)</label><select id="inDev"></select>
+        <button id="applyDev" class="btn wide" data-i18n="apply">Apply</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="set-row"><div><b data-i18n="autoMeasure">Detect original tuning automatically</b><small data-i18n="autoMeasureHint">Detects whether a song is tuned to 440, 442 or 443 Hz.</small></div>
+        <label class="switch"><input type="checkbox" id="auto"><span></span></label></div>
+      <div class="set-row" id="manualRow"><div><b data-i18n="fixedRef">Fixed original tuning</b><small data-i18n="fixedRefHint">Used when detection is off.</small></div>
+        <div class="inline"><input id="manualRef" type="number" min="400" max="480" step="0.1"><span>Hz</span></div></div>
+      <div class="set-row"><div><b data-i18n="profile">Sound profile</b><small id="profileHint"></small></div></div>
+      <div class="seg" id="profileSeg"><button data-v="music" data-i18n="pMusic">🎵 Music · Hi-Fi</button><button data-v="voice" data-i18n="pVoice">🎮 Voice &amp; gaming</button></div>
+      <div class="set-row"><div><b data-i18n="precise">🎯 Precision mode</b><small data-i18n="preciseHint">Analyses ahead</small></div>
+        <label class="switch"><input type="checkbox" id="precise"><span></span></label></div>
+      <div class="set-row"><div><b id="updTitle">🔄 Automatic updates</b><small id="updHint"></small><small id="updInfo" class="upd-info"></small></div>
+        <label class="switch"><input type="checkbox" id="autoUpd" checked><span></span></label></div>
+      <div class="set-row upd-row"><button type="button" id="updCheck" class="upd-check">Check now</button></div>
+    </div>
+
+    <div class="card">
+      <div class="set-row"><div><b data-i18n="language">Language</b></div>
+        <div class="seg small" id="langSeg"><button data-v="en">English</button><button data-v="de">Deutsch</button></div></div>
+      <div class="set-row"><div><b data-i18n="autostart">Start with Windows</b><small data-i18n="autostartHint">Starts minimized and runs in the background.</small></div>
+        <label class="switch"><input type="checkbox" id="autostart"><span></span></label></div>
+      <div class="btn-row">
+        <button id="resetSound" class="btn ghost" data-i18n="resetSound">🔈 Reset sound</button>
+        <button id="openSound" class="btn ghost" data-i18n="openSound">⚙️ Sound settings</button>
+      </div>
+    </div>
+
+    <div class="card info">
+      <div class="set-row"><div><b data-i18n="tech">Technical</b><small id="techInfo">–</small></div></div>
+      <div class="muted"><span id="version">Aurelune Studio</span> · <button id="openLog" class="link" data-i18n="openLog">open log file</button></div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button data-view="home" class="active"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h1.5l1.2-3 2.6 6 1.2-3H16"/></svg><span data-i18n="tHome">Live</span></button>
+  <button data-view="freq"><svg viewBox="0 0 24 24"><path d="M3 12h2l2-6 3 12 3-9 2 5 2-2h4" /></svg><span data-i18n="tFreq">Frequencies</span></button>
+  <button data-view="settings"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span data-i18n="tSet">Settings</span><i class="dot" id="setDot" hidden></i></button>
+</nav>
+<div id="toast" class="toast"></div>
+
+<script src="frequencies.js"></script>
+<script src="i18n.js"></script>
+<div id="updBar"><div class="upd-main"><b id="updText"></b><small id="updNotes"></small></div><button type="button" id="updGo">Install</button><button type="button" id="updX" aria-label="close">✕</button><div id="updProg"><i></i></div></div>
+<script src="app.js"></script>
+<script src="update.js"></script>
+</body></html>

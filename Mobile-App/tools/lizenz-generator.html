@@ -1,0 +1,12 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Aurelune Lizenz-Generator</title>
+<style>body{font:15px system-ui;background:#0d0b14;color:#f3f0fb;max-width:640px;margin:40px auto;padding:0 16px}input,button,textarea{font:inherit;padding:10px;border-radius:10px;border:1px solid #333;background:#17141f;color:#fff}button{background:#f5b971;color:#1a1222;font-weight:700;border:0;cursor:pointer}textarea{width:100%;height:260px;margin-top:12px;font-family:Consolas,monospace}</style></head>
+<body><h2>👑 Aurelune – Lizenzcodes erzeugen</h2>
+<p>Nur für dich als Anbieter. Der geheime Schlüssel muss mit <code>licenseSecret</code> in <code>config.js</code> übereinstimmen. Diese Datei nicht veröffentlichen!</p>
+<p><input id="sec" style="width:100%" placeholder="licenseSecret"></p>
+<p><input id="n" type="number" value="10" min="1" max="1000"> <button id="go">Codes erzeugen</button></p>
+<textarea id="out" readonly></textarea>
+<script>
+const B32='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+async function sig(secret, part){const e=new TextEncoder();const k=await crypto.subtle.importKey('raw',e.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);const mac=new Uint8Array(await crypto.subtle.sign('HMAC',k,e.encode(part)));let bits=0,val=0,out='';for(const b of mac){val=(val<<8)|b;bits+=8;while(bits>=5&&out.length<5){out+=B32[(val>>>(bits-5))&31];bits-=5;}if(out.length>=5)break;}return out;}
+document.getElementById('go').onclick=async()=>{const s=document.getElementById('sec').value;if(!s)return alert('Bitte Schlüssel eingeben');const n=+document.getElementById('n').value;const codes=[];for(let i=0;i<n;i++){const r=crypto.getRandomValues(new Uint8Array(5));const p=[...r].map(v=>B32[v&31]).join('');codes.push(`AUR-${p}-${await sig(s,p)}`);}document.getElementById('out').value=codes.join('\n');};
+</script></body></html>

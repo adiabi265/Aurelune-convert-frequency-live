@@ -1,0 +1,146 @@
+﻿==========================================================================
+  AURELUNE STUDIO – Manual setup (Windows 10/11)
+==========================================================================
+
+Normally "Aurelune-Studio-Setup.exe" does EVERYTHING automatically.
+This guide is for everyone who wants to do each step by hand or check
+what the installer changes.
+
+--------------------------------------------------------------------------
+ WHAT THE AUTOMATIC INSTALLER DOES
+--------------------------------------------------------------------------
+ 1. Python 3.12 (only if no Python 3.10–3.13 is present)
+ 2. Microsoft WebView2 (only if missing)
+ 3. App to  %LOCALAPPDATA%\Programs\Aurelune Studio
+ 4. VB-CABLE driver (only if missing) + settings:
+      - disabled CABLE devices are enabled again
+      - CABLE Input & CABLE Output set to 48000 Hz, 24 bit
+      - volume of both CABLE devices 100 %, not muted
+      - Windows communications: "Do nothing" (no ducking)
+      - your current output device (e.g. "SteelSeries Sonar - Gaming")
+        is saved as Aurelune's main speaker
+ 5. Components: numpy, sounddevice, pywebview (own environment)
+ 6. Start menu, desktop shortcut, autostart, entry under "Apps"
+
+--------------------------------------------------------------------------
+ STEP 1 – Install Python
+--------------------------------------------------------------------------
+ - https://www.python.org/downloads/windows/  ->  Python 3.12 (64-bit)
+ - While installing, tick "Add python.exe to PATH".
+ - Check: open Command Prompt ->  py -3.12 --version
+
+--------------------------------------------------------------------------
+ STEP 2 – Install VB-CABLE
+--------------------------------------------------------------------------
+ - https://vb-audio.com/Cable/  ->  download "VBCABLE_Driver_Pack45.zip"
+ - Extract -> right-click  VBCABLE_Setup_x64.exe
+   -> "Run as administrator" -> "Install Driver"
+ - Restart the PC.
+
+--------------------------------------------------------------------------
+ STEP 3 – Configure VB-CABLE
+--------------------------------------------------------------------------
+ Win+R ->  mmsys.cpl  -> Enter
+
+ Is VB-CABLE enabled?
+   - In both tabs right-click the list -> "Show Disabled Devices".
+     If "CABLE Input" or "CABLE Output" says "Disabled" -> right-click
+     -> "Enable".
+   - (The app checks this itself: Settings -> System check ->
+     "Repair automatically".)
+
+ Tab "Playback":
+   - "CABLE Input" -> Properties -> Advanced
+       Default format: 2 channel, 24 bit, 48000 Hz (Studio Quality) -> OK
+   - "CABLE Input" -> Properties -> Levels: 100, not muted
+   - Your normal output device stays the "Default Device" – Aurelune
+     switches by itself when you turn it on.
+     (Without automatic switching: set "CABLE Input" as default.)
+   - Recommended: set your speakers/headset to 48000 Hz as well.
+
+ Tab "Recording":
+   - "CABLE Output" -> Properties -> Advanced
+       Default format: 2 channel, 24 bit, 48000 Hz -> OK
+   - "Listen": do NOT tick "Listen to this device"
+     (otherwise you hear everything twice).
+
+ Tab "Communications":
+   - choose "Do nothing" -> OK
+
+--------------------------------------------------------------------------
+ STEP 4 – Install Aurelune Studio
+--------------------------------------------------------------------------
+ Copy the "app" folder from the package e.g. to
+   C:\Users\<NAME>\AppData\Local\Programs\Aurelune Studio
+ Open a Command Prompt there:
+
+   py -3.12 -m venv .venv
+   .venv\Scripts\python -m pip install -r requirements.txt
+
+ Build the device switcher (optional, for automatic switching):
+
+   C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /out:AudioSwitch.exe AudioSwitch.cs
+
+ Start:   .venv\Scripts\pythonw.exe app.py
+
+--------------------------------------------------------------------------
+ STEP 5 – In the app
+--------------------------------------------------------------------------
+ - Click the big circle -> Aurelune is active.
+ - Settings -> "Main speaker": choose where Aurelune plays.
+ - Settings -> System check shows whether VB-CABLE is OK.
+ - Settings -> "Start with Windows".
+
+--------------------------------------------------------------------------
+ STEELSERIES SONAR / EQUALIZER SOFTWARE (e.g. Arctis 7+)
+--------------------------------------------------------------------------
+ Sound path:
+   Games/Spotify -> CABLE Input -> Aurelune (432 Hz) ->
+   "SteelSeries Sonar - Gaming" (your EQ) -> Arctis 7+ headset
+
+ - Keep "SteelSeries Sonar - Gaming" as default device before installing
+   – the installer takes it over as main speaker automatically.
+ - Or in the app: Settings -> "Main speaker" ->
+   "SteelSeries Sonar - Gaming (…)".
+ - If Sonar sets itself as default again, Aurelune switches back to
+   "CABLE Input" automatically after a few seconds.
+ - Apps that are assigned to a fixed channel in Windows/Sonar (e.g.
+   Discord -> "Sonar - Chat") bypass Aurelune. To retune them too, set
+   their output device to "Default".
+
+--------------------------------------------------------------------------
+ PROOF: IS IT REALLY 432 HZ?
+--------------------------------------------------------------------------
+ Live page -> card "Proof": Aurelune independently measures the signal
+ that goes to your speakers.
+   - "Original (input)"  = tuning of the song, e.g. 440.0 Hz
+   - "You hear (output)" = measured tuning, e.g. 432.0 Hz
+   - "Tuning fingerprint": the coloured curve sits on the target line,
+     the grey one (original) on 440.
+   - Hold "hear the original" -> the measurement jumps to 440.
+
+--------------------------------------------------------------------------
+ PROBLEMS?
+--------------------------------------------------------------------------
+ No sound:      Start menu -> Aurelune Studio -> "Reset sound"
+                or set your speakers as default in mmsys.cpl.
+ Double sound:  disable "Listen" on "CABLE Output".
+ Crackling:     Settings -> profile "Music"; all devices at 48000 Hz.
+ App does not react: run the installer again (installs WebView2);
+                otherwise Aurelune opens in an Edge window automatically.
+ Log files:     %TEMP%\AureluneSetup\setup.log
+                %USERPROFILE%\.aurelune\aurelune.log
+
+--------------------------------------------------------------------------
+ UNINSTALL
+--------------------------------------------------------------------------
+ Windows Settings -> Apps -> "Aurelune Studio" -> Uninstall
+ (also asks whether VB-CABLE should be removed).
+
+UPDATE (no reinstall)
+---------------------
+1. Extract the new Aurelune-Komplett.zip (e.g. over the old folder).
+2. Double-click Aurelune-Update.bat.
+3. Done: settings, Python and VB-CABLE are kept, the app restarts.
+   On errors the previous version is restored automatically.
+   Log: %TEMP%\AureluneSetup\update.log
