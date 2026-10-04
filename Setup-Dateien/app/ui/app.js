@@ -123,12 +123,15 @@ function renderStatus(force) {
   const inA4 = s.in_conf > 0.5 ? s.in_a4 : (s.source === 'fallback' ? 440 : s.reference);
   $('fIn').innerHTML = s.silent ? t('silence') : `${s.in_conf > 0.5 || s.source !== 'fallback' ? '' : '≈ '}${fmt(inA4)} Hz<small class="a4sub">${t('songTuning')}</small>`;
   $('fOut').innerHTML = outOk ? `${fmt(s.out_a4 * kq)} Hz${a4s(s.out_a4)}` : '–';
-  $('fDev').textContent = outOk ? fmtC(s.out_dev) : '–';
+  // v3.10: main value = average over the song (slow meter), small line = momentary value (natural wobble of the music)
+  const avgOk = outOk && s.out_conf_avg > 0.5 && s.out_dev_avg != null;
+  const devMain = avgOk ? s.out_dev_avg : s.out_dev;
+  $('fDev').innerHTML = outOk ? `${fmtC(devMain)}<small class="a4sub">${avgOk ? t('devAvg') : ''}</small><small class="a4sub">${t('devNow')}: ${fmtC(s.out_dev)}</small>` : '–';
   const v = $('verdict');
   if (s.silent) { v.textContent = t('silence'); v.className = 'verdict'; }
   else if (!s.enabled) { v.textContent = t('bypassV'); v.className = 'verdict warn'; }
   else if (!music) { v.textContent = t('noMusic'); v.className = 'verdict'; }
-  else if (outOk && Math.abs(s.out_dev) < 3) { v.textContent = t('verified'); v.className = 'verdict ok'; }
+  else if (outOk && Math.abs(devMain) < 3) { v.textContent = t('verified'); v.className = 'verdict ok'; }
   else { v.textContent = t('measuring'); v.className = 'verdict'; }
   let txt;
   if (!s.enabled) txt = t('anaBypass');

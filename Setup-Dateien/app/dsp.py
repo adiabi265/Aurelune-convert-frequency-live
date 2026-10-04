@@ -274,6 +274,8 @@ class SpectrumProbe:
             freqs = adv / (TWO_PI * H) * self.sr
             self.detector.update(freqs, mag[peaks], rms)
             hs = (freqs > 60) & (freqs < 4000)
+            for d in getattr(self, 'extra', ()):
+                d.update(freqs, mag[peaks], rms)
             self.hist *= self.hist_decay
             if hs.any() and rms > 1e-4:
                 w = mag[peaks][hs]
@@ -286,6 +288,8 @@ class SpectrumProbe:
                 self.peak = (float(freqs[i]), float(mag[peaks][i]))
         else:
             self.detector.update(np.zeros(0), np.zeros(0), rms)
+            for d in getattr(self, 'extra', ()):
+                d.update(np.zeros(0), np.zeros(0), rms)
         self.prev_ph = ph
         self.count += 1
         if self.count % 2 == 0:  # display spectrum (dB, max per log band)

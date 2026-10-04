@@ -29,7 +29,7 @@
   } catch (e) {}
   var STEPS = [0, 0.75, 1.5, 3];
   function key(v) { return v === 0 ? '0' : v === 0.75 ? '075' : v === 1.5 ? '15' : '3'; }
-  function cur() { return settings.precision ? (STEPS.indexOf(Number(settings.lock_s)) > 0 ? Number(settings.lock_s) : 1.5) : 0; }
+  function cur() { return settings.precision ? (STEPS.indexOf(Number(settings.lock_s)) > 0 ? Number(settings.lock_s) : 0.75) : 0; }
   function build() {
     var sw = $('precise'); if (!sw || $('lockSeg')) return;
     var row = sw.closest('.set-row'); if (!row) return;

@@ -68,7 +68,7 @@ class Engine:
     def __init__(self):
         self.settings = {'enabled': True, 'target_a4': 432.0, 'auto': True, 'manual_ref': 440.0, 'quality': 'music',
                          'binaural': False, 'bin_preset': 'gateway', 'bin_level': 0.2, 'bin_noise': 0.3, 'bin_auto': True,
-                         'precision': True, 'lock_s': 1.5}
+                         'precision': True, 'lock_s': 0.75}
         self.running = False
         self.lock = threading.Lock()
         self.istream = self.ostream = None
@@ -115,11 +115,13 @@ class Engine:
         # v3.9 live meter: tau 0.7 s -> a tuning change shows within ~0.8 s (10 cent) / ~1.6 s (2 cent), noise ~0.15 cent
         self.probe_in.detector = TuningDetector(self.in_sr, 1024, tau=0.7)
         self.probe_out.detector = TuningDetector(self.in_sr, 1024, tau=0.7)
+        # v3.10: slow proof meter (tau 8 s) = average tuning of the song; the fast one shows natural note-to-note wobble
+        self.probe_out.extra = [TuningDetector(self.in_sr, 1024, tau=8.0)]
         self.mus_rms = 0.0
         self.bin_eff = 0.0
         if self.precise:
             # look-ahead: the song is analysed 1.5 s before it is played, long integration, then held steady
-            lock_s = min(3.0, max(0.5, float(self.settings.get('lock_s') or 1.5)))
+            lock_s = min(3.0, max(0.5, float(self.settings.get('lock_s') or 0.75)))
             self.look = int(self.in_sr * lock_s)
             self.delay = deque()
             self.probe_ahead = SpectrumProbe(self.in_sr, 1024)
@@ -174,6 +176,8 @@ class Engine:
         self.settings.update({k: v for k, v in patch.items() if k in self.settings})
         if self.running and old != (self.settings.get('target_a4'), self.settings.get('enabled')):
             self.probe_out.detector.reset()   # measure the new result from scratch (no stale proof)
+            for d in getattr(self.probe_out, 'extra', ()):
+                d.reset()
 
     # ---------- audio callbacks ----------
     def _in_cb(self, indata, frames, t, status):
@@ -334,6 +338,11 @@ class Engine:
             'limiter_db': self.limiter.reduction_db,
         }
         r['precision'] = self.precise
+        try:
+            ac, ae = self.probe_out.extra[0].estimate()
+            r['out_conf_avg'], r['out_dev_avg'] = float(ac), float(wrap50(1200 * np.log2(ae / expected)))
+        except Exception:
+            r['out_conf_avg'], r['out_dev_avg'] = 0.0, float(dev)
         ic, ie = self.probe_in.detector.estimate()
         r['in_a4'], r['in_conf'] = float(ie), float(ic)
         r['bin_level_eff'] = float(self.bin_eff)
