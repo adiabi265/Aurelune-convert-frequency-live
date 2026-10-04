@@ -4,7 +4,7 @@
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.12.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.13.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---
@@ -114,7 +114,9 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 | `ui/index.html`, `app.js`, `style.css`, `desk.css`, `i18n.js`, `frequencies.js`, `update.js` | Oberfläche |
 | `ui/v38.js`, `v39.js`, `v310.js`, `v311.js`, `v312.js` (+ `v38.css`, `v311.css`, `v312.css`) | Versions-Patches für die UI (Texte, neue Bedienelemente) – werden nach `app.js` geladen |
 | `Setup-Dateien/installer/*.ps1` | Setup (Python, WebView2, VB-CABLE), Update, Deinstallation |
-| `Aurelune-Studio-Setup.exe`, `Aurelune-Update.bat` | Installer-Starter / manuelles Update |
+| `Setup-Dateien/installer/autoupdate.ps1` + `.vbs` | Hintergrund-Updater (seit 3.13): startet unsichtbar bei der Windows-Anmeldung (HKCU Run `AureluneStudioUpdater`), prüft alle 3 min `version.txt` auf GitHub und startet `update.ps1 -Background` |
+| `Setup-Dateien/installer/SetupStub.cs` | Quelltext der `Aurelune-Studio-Setup.exe` (Online-Setup, Build-Befehl steht im Kopf der Datei) |
+| `Aurelune-Studio-Setup.exe`, `README.md` (Root) | Das Einzige, was Nutzer brauchen: EXE starten. Die EXE lädt immer die neueste Version von GitHub und startet `installer/setup.ps1` |
 
 Installationsort beim Nutzer: `%LOCALAPPDATA%\Programs\Aurelune Studio` (eigene `.venv`). Log: `%USERPROFILE%\.aurelune\aurelune.log`.
 
@@ -122,15 +124,23 @@ Installationsort beim Nutzer: `%LOCALAPPDATA%\Programs\Aurelune Studio` (eigene 
 
 1. Code ändern, **`Setup-Dateien/app/version.txt` hochzählen** und Zeile oben in `CHANGELOG.txt` ergänzen.
 2. Auf `main` pushen.
-3. Die installierte App prüft GitHub beim Start und **jede Stunde** (seit 3.11; davor alle 6 h).
+3. **Ab 3.13 live:** der Hintergrund-Updater prüft **alle 3 Minuten** (auch wenn das Fenster zu ist), die offene App
+   ebenfalls alle 3 Minuten und beim Zurückholen des Fensters. Neue Version = sofort installiert; war Aurelune offen,
+   startet es neu, sonst läuft das Update unsichtbar. Fehlgeschlagene Version wird 6 h nicht erneut versucht
+   (`%TEMP%\AureluneSetup\update-failed.txt`). Logs: `%TEMP%\AureluneSetup\autoupdate.log`, `update.log`.
+   (3.11–3.12: beim Start und stündlich; davor alle 6 h.)
    - **Ab 3.11:** ist „Automatische Updates“ an, installiert sich eine neue Version **selbst** und Aurelune
      **startet automatisch neu** (einmal pro Version; bei Fehler bleibt der Knopf „Installieren“).
-   - Bis einschließlich 3.10 musste man auf „Installieren“ klicken (oder `Aurelune-Update.bat` starten) –
-     das Update auf 3.11 braucht deshalb **einmal** diesen Klick.
+   - Bis einschließlich 3.10 musste man auf „Installieren“ klicken – das Update auf 3.11 brauchte deshalb einmal diesen Klick.
 4. `update.ps1` sichert die alte Version, kopiert `app/`, installiert ggf. neue Python-Pakete und startet die App neu.
    Einstellungen, `.venv` und VB-CABLE bleiben erhalten.
 
-Die `Aurelune-Studio-Setup.exe` muss nur für Neuinstallationen neu gebaut werden, nicht für Updates.
+Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer `main`) – sie muss praktisch nie neu gebaut werden.
+
+**Regel für Chats:** Nach jeder neuen Version sofort pushen (über Adrians lokales Git in
+`C:\Users\liket\PlazCodeWorkspace\Aurelune-repo`) **und danach Adrians installierte App updaten + neu starten**:
+`powershell -NoProfile -ExecutionPolicy Bypass -STA -WindowStyle Hidden -File Aurelune-repo\Setup-Dateien\installer\update.ps1`
+(im Workspace-Ordner), dann `installed-version.txt` im Installationsordner prüfen.
 
 ## 6. Arbeitsregeln für neue Chats
 
@@ -158,6 +168,7 @@ Die `Aurelune-Studio-Setup.exe` muss nur für Neuinstallationen neu gebaut werde
 
 ## 8. Versionsverlauf (Kurz)
 
+- **3.13.0** – Live-Updates: Hintergrund-Updater (alle 3 min, auch bei geschlossenem Fenster), App prüft alle 3 min; neues Online-Setup-EXE (`SetupStub.cs`), Root aufgeräumt (`README.md`, `Aurelune-Update.bat` entfernt).
 - **3.12.0** – Playlists (5 Themen, 21 live erzeugte Stücke, schon auf Zielfrequenz gestimmt) + wählbare Naturklänge pro Playlist.
 - **3.11.0** – Gehirnwellen stapelbar (2/4/7/8/16/32), Preset „Septa · 7 Wellen“ (SeptaSync-Prinzip), Träger als
   27-Hz-Obertöne; 432-Lock nur noch Aus / 0,75 s; Updates installieren sich selbst + Auto-Neustart, Prüfung stündlich.

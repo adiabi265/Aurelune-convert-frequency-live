@@ -1,4 +1,6 @@
 ﻿# Aurelune Studio – Updater: updates an existing installation in place (keeps settings, Python, VB-CABLE).
+# -Background: started by the background updater (autoupdate.ps1) - invisible if Aurelune is closed, restarts it only if it was open.
+param([switch]$Background)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
@@ -26,6 +28,29 @@ $OldVer = '?'
 $f = Join-Path $InstallDir 'installed-version.txt'
 if (Test-Path $f) { $OldVer = (Get-Content -Raw -Path $f).Trim() }
 elseif (Test-Path (Join-Path $InstallDir 'version.txt')) { $OldVer = (Get-Content -Raw -Path (Join-Path $InstallDir 'version.txt')).Trim() }
+
+function V([string]$s) {
+    $n = @([regex]::Matches(($s + ''), '\d+') | Select-Object -First 4 | ForEach-Object { [int]$_.Value })
+    while ($n.Count -lt 4) { $n += 0 }
+    return New-Object Version($n[0], $n[1], $n[2], $n[3])
+}
+# only one update at a time (in-app updater and background updater may both start one)
+$created = $false
+$runMutex = New-Object Threading.Mutex($true, 'Local\AureluneStudioUpdateRun', [ref]$created)
+if (-not $created) { exit 0 }
+if ($Background -and ((V $NewVer) -le (V $OldVer))) { exit 0 }
+$appRunning = $false
+try { $appRunning = @(Get-CimInstance Win32_Process -Filter "Name='pythonw.exe' OR Name='python.exe'" -ErrorAction Stop | Where-Object { $_.CommandLine -like '*Aurelune Studio*' }).Count -gt 0 } catch {}
+$FailedFile = Join-Path $Temp 'update-failed.txt'
+function Start-Watcher {
+    try {
+        $vbs = Join-Path $InstallDir 'autoupdate.vbs'
+        if (-not (Test-Path $vbs)) { return }
+        $wscript = Join-Path $env:SystemRoot 'System32\wscript.exe'
+        Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'AureluneStudioUpdater' -Value "`"$wscript`" `"$vbs`""
+        Start-Process -FilePath $wscript -ArgumentList "`"$vbs`""
+    } catch { Log ('watcher: ' + $_.Exception.Message) }
+}
 
 # not installed yet (or broken) -> run the full setup instead
 if (-not (Test-Path (Join-Path $InstallDir 'app.py')) -or -not (Test-Path $VenvPy)) {
@@ -89,6 +114,10 @@ function Do-Update {
             foreach ($pr in $procs) { $wasRunning = $true; Invoke-CimMethod -InputObject $pr -MethodName Terminate | Out-Null }
             if ($wasRunning) { Start-Sleep -Milliseconds 800 }
         } catch {}
+        try {   # stop the old background updater - the new one is started at the end
+            Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction Stop | Where-Object { $_.CommandLine -like '*autoupdate.ps1*' -and $_.ProcessId -ne $PID } |
+                ForEach-Object { Invoke-CimMethod -InputObject $_ -MethodName Terminate | Out-Null }
+        } catch {}
         if ($wasRunning -and (Test-Path $SwitchExe)) { & $SwitchExe restore | Out-Null }   # sound back to the normal speaker meanwhile
 
         Status (M 'Backing up current version …' 'Sichere aktuelle Version …') 0.15
@@ -100,7 +129,7 @@ function Do-Update {
 
         Status (M 'Copying new files …' 'Kopiere neue Dateien …') 0.3
         Get-ChildItem -Path $AppSrc | Where-Object { $_.Name -ne '__pycache__' } | ForEach-Object { Copy-Item -Path $_.FullName -Destination $InstallDir -Recurse -Force; Pump }
-        foreach ($x in @('uninstall.ps1', 'update.ps1')) { $s = Join-Path $PSScriptRoot $x; if (Test-Path $s) { Copy-Item $s $InstallDir -Force } }
+        foreach ($x in @('uninstall.ps1', 'update.ps1', 'autoupdate.ps1', 'autoupdate.vbs')) { $s = Join-Path $PSScriptRoot $x; if (Test-Path $s) { Copy-Item $s $InstallDir -Force } }
         foreach ($x in @('MANUAL-SETUP.txt', 'MANUELLE-EINRICHTUNG.txt')) { $s = Join-Path $Root $x; if (Test-Path $s) { Copy-Item $s $InstallDir -Force } }
         Remove-Item (Join-Path $InstallDir '__pycache__') -Recurse -Force -ErrorAction SilentlyContinue
 
@@ -133,11 +162,13 @@ function Do-Update {
 
         Status (M "Done – Aurelune Studio $NewVer is installed. Your settings were kept." "Fertig – Aurelune Studio $NewVer ist installiert. Deine Einstellungen bleiben erhalten.") 1
         $st.ForeColor = $C_OK
-        Start-Process -FilePath $VenvPyw -ArgumentList "`"$(Join-Path $InstallDir 'app.py')`"" -WorkingDirectory $InstallDir
+        Remove-Item $FailedFile -Force -ErrorAction SilentlyContinue
+        if (-not $Background -or $wasRunning) { Start-Process -FilePath $VenvPyw -ArgumentList "`"$(Join-Path $InstallDir 'app.py')`"" -WorkingDirectory $InstallDir }
         $script:AutoClose = $true
     } catch {
         $msg = $_.Exception.Message
         Log "ERROR: $msg"
+        try { Set-Content -Path $FailedFile -Value $NewVer -Encoding ASCII } catch {}
         if (Test-Path $backup) {
             Get-ChildItem -Path $backup | ForEach-Object { Copy-Item -Path $_.FullName -Destination $InstallDir -Recurse -Force }
             Log 'Rolled back to the previous version.'
@@ -147,6 +178,7 @@ function Do-Update {
         if ($wasRunning) { Start-Process -FilePath $VenvPyw -ArgumentList "`"$(Join-Path $InstallDir 'app.py')`"" -WorkingDirectory $InstallDir }
     } finally {
         $timer.Stop(); $shine.Visible = $false; $btn.Enabled = $true
+        Start-Watcher
     }
 }
 
@@ -158,4 +190,5 @@ $w.add_Shown({
         $t2 = New-Object Windows.Forms.Timer; $t2.Interval = 3500; $t2.add_Tick({ $w.Close() }); $t2.Start()
     }
 })
+if ($Background -and -not $appRunning) { $w.Opacity = 0; $w.ShowInTaskbar = $false }   # silent while Aurelune is closed
 [void]$w.ShowDialog()

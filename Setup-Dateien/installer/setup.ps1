@@ -508,7 +508,7 @@ function Install-AppFiles {
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
     Get-ChildItem -Path $AppSrc | Where-Object { $_.Name -ne '__pycache__' } | ForEach-Object { Copy-Item -Path $_.FullName -Destination $InstallDir -Recurse -Force; Pump }
     Copy-Item -Path (Join-Path $PSScriptRoot 'uninstall.ps1') -Destination $InstallDir -Force
-    $upd = Join-Path $PSScriptRoot 'update.ps1'; if (Test-Path $upd) { Copy-Item -Path $upd -Destination $InstallDir -Force }
+    foreach ($x in @('update.ps1', 'autoupdate.ps1', 'autoupdate.vbs')) { $upd = Join-Path $PSScriptRoot $x; if (Test-Path $upd) { Copy-Item -Path $upd -Destination $InstallDir -Force } }
     Set-Content -Path (Join-Path $InstallDir 'installed-version.txt') -Value $Version -Encoding ASCII
     foreach ($rd in @('MANUAL-SETUP.txt', 'MANUELLE-EINRICHTUNG.txt')) { $f = Join-Path $Root $rd; if (Test-Path $f) { Copy-Item -Path $f -Destination $InstallDir -Force } }
     Step 'app' 'run' (T 'buildSwitch')
@@ -661,6 +661,13 @@ function Install-Finish {
     $run = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
     if ($cbAuto.Checked) { Set-ItemProperty -Path $run -Name 'AureluneStudio' -Value "`"$VenvPyw`" $appArgs --minimized" }
     else { Remove-ItemProperty -Path $run -Name 'AureluneStudio' -ErrorAction SilentlyContinue }
+    # v3.13: background updater - installs new GitHub versions within minutes, even while the window is closed
+    $auVbs = Join-Path $InstallDir 'autoupdate.vbs'
+    if (Test-Path $auVbs) {
+        $wscript = Join-Path $env:SystemRoot 'System32\wscript.exe'
+        Set-ItemProperty -Path $run -Name 'AureluneStudioUpdater' -Value "`"$wscript`" `"$auVbs`""
+        try { Start-Process -FilePath $wscript -ArgumentList "`"$auVbs`"" } catch {}
+    }
 
     $un = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\AureluneStudio'
     New-Item -Path $un -Force | Out-Null

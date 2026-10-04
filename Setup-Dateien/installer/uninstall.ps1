@@ -16,6 +16,11 @@ $sw = Join-Path $dir 'AudioSwitch.exe'
 if (Test-Path $sw) { & $sw restore | Out-Null }
 Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'AureluneStudio' -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce' -Name 'AureluneStudio' -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'AureluneStudioUpdater' -ErrorAction SilentlyContinue
+try {
+    Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -like '*autoupdate.ps1*' } |
+        ForEach-Object { Invoke-CimMethod -InputObject $_ -MethodName Terminate | Out-Null }
+} catch {}
 Remove-Item 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\AureluneStudio' -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path ([Environment]::GetFolderPath('Programs')) 'Aurelune Studio') -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Aurelune Studio.lnk') -Force -ErrorAction SilentlyContinue

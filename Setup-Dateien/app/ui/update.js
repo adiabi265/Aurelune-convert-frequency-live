@@ -1,11 +1,11 @@
 /* Aurelune Studio - automatic updates from GitHub */
 (function () {
   const T = {
-    en: { title: '🔄 Automatic updates', hint: 'Checks GitHub on start and every hour - new versions install themselves and Aurelune restarts automatically.',
+    en: { title: '🔄 Automatic updates', hint: 'Checks GitHub every 3 minutes (also in the background while the window is closed) - new versions install themselves and Aurelune restarts automatically.',
       avail: 'Update {v} available', install: 'Install', check: 'Check now', checking: 'Checking …',
       uptodate: 'Up to date – version {v}', error: 'Update check failed (offline?)', dl: 'Downloading update … {p} %',
       launching: 'Installing – Aurelune restarts in a moment …', failed: 'Update failed: {v}', cur: 'Installed: {v}' },
-    de: { title: '🔄 Automatische Updates', hint: 'Prüft beim Start und jede Stunde auf GitHub - neue Versionen installieren sich selbst und Aurelune startet automatisch neu.',
+    de: { title: '🔄 Automatische Updates', hint: 'Prüft alle 3 Minuten auf GitHub (auch im Hintergrund, wenn das Fenster zu ist) - neue Versionen installieren sich selbst und Aurelune startet automatisch neu.',
       avail: 'Update {v} verfügbar', install: 'Installieren', check: 'Jetzt prüfen', checking: 'Prüfe …',
       uptodate: 'Aktuell – Version {v}', error: 'Update-Prüfung fehlgeschlagen (offline?)', dl: 'Lade Update … {p} %',
       launching: 'Wird installiert – Aurelune startet gleich neu …', failed: 'Update fehlgeschlagen: {v}', cur: 'Installiert: {v}' }
@@ -78,7 +78,11 @@
     if (typeof api === 'undefined' || !api || typeof call !== 'function') return setTimeout(boot, 500);
     wireUpd(); render();
     setTimeout(() => check(false), 4000);
-    setInterval(() => { if (!el('autoUpd') || el('autoUpd').checked) check(true); }, 3600 * 1000);   // hourly
+    // v3.13: live updates - check every 3 minutes and whenever the window comes back to the front
+    let lastChk = Date.now();
+    const auto = () => (!el('autoUpd') || el('autoUpd').checked);
+    setInterval(() => { if (auto()) { lastChk = Date.now(); check(true); } }, 180 * 1000);
+    window.addEventListener('focus', () => { if (auto() && Date.now() - lastChk > 60 * 1000) { lastChk = Date.now(); check(true); } });
     setInterval(render, 1500);  // follows language switches
   }
   boot();
