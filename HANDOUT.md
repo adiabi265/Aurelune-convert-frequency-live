@@ -4,7 +4,7 @@
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.16.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.17.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---
@@ -13,7 +13,7 @@ Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 Aurelune stimmt **jeden Sound in Echtzeit** auf eine Zielfrequenz um – Standard **A4 = 432 Hz** statt 440 Hz
 (außerdem Solfeggio 174 / 285 / 396 / 417 / 528 / 639 / 741 / 852 / 963 Hz und eigene Werte).
-Zusätzlich: **Gehirnwellen-Schichten** (gestapelte binaurale Beats), **Cymatics-Visualizer**, Sleep-Timer und seit 3.12 **Playlists** (live erzeugte Musik + Naturklänge, schon auf die Zielfrequenz gestimmt).
+Zusätzlich: **Gehirnwellen-Schichten** (gestapelte binaurale Beats), **Cymatics-Visualizer** (seit 3.17 3D-Kymatik mit 5 Ansichten), Sleep-Timer, seit 3.12 **Playlists** (live erzeugte Musik + Naturklänge, schon auf die Zielfrequenz gestimmt), seit 3.14 **Wellness** (Sitzungen, Atem, Takt, Schlaf, 8D, Klangschalen, Gehörschutz), seit 3.15 **Brainwave-Player + Gateway-Meditation** und seit 3.17 ein **Mixer mit Auto-Mix** („✨ Optimal mischen“).
 
 Zwei Produkte im Repo:
 
@@ -30,8 +30,11 @@ Windows-Standardausgabe = VB-CABLE (virtuelles Kabel)
   -> [432-Lock: 0,75 s Look-ahead – Stimmung des Songs wird VOR dem Abspielen gemessen]
   -> Phase-Locked Pitch-Shifter (Phasenvocoder, 8192 FFT / 87,5 % Overlap im Lock-Modus)
   -> Beweis-Messung des Ergebnisses ("Du hörst", "Abweichung vom Ziel")
-  -> + Gehirnwellen-Schichten (nach der Messung, damit sie den Beweis nicht verfälschen)
-  -> Limiter (-0,3 dBFS) -> Sinc-Resampler (Samplerate + Clock-Drift)
+  -> Wellness auf der Musik selbst (Fokus-Modulation, Atem-Schwellen, 8D)
+  -> Zusatzklänge GETRENNT erzeugt (nach der Messung, damit sie den Beweis nicht verfälschen):
+       Gehirnwellen-Schichten, Takt, Atem-Ton, Schlaf-Rauschen, Klangschalen, Gateway-Reise
+  -> AutoMix (mixer.py, seit 3.17): misst jede Quelle, hält die Zusatzklänge zusammen unter der Musik
+  -> Gehörschutz (EarGuard) -> Limiter (-0,3 dBFS) -> Sinc-Resampler (Samplerate + Clock-Drift)
   -> OutputStream = echte Lautsprecher/Kopfhörer (z. B. "SteelSeries Sonar - Gaming")
 ```
 
@@ -102,7 +105,7 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 
 ## 3c. Wellness (seit 3.14, `wellness.py` + `ui/v314.js` + `v314.css`)
 
-- Eigener Reiter „Wellness“. Audio läuft in der Engine **nach** der Beweis-Messung (`Wellness.process` in `engine._work`), danach `Wellness.guard` (Gehörschutz) und Limiter.
+- Eigener Reiter „Wellness“. Audio läuft in der Engine **nach** der Beweis-Messung. Seit 3.17 ruft die Engine `Wellness.process_split` auf (Musik + getrennte Zusatzklänge `pad`/`beat`/`sleep`/`bowls` für den Mixer; `Wellness.process` summiert weiterhin), danach AutoMix, `Wellness.guard` (Gehörschutz) und Limiter. Der Atem-Ton läuft seit 3.17 nicht mehr durch den 8D-Effekt.
 - **Sitzungen** (`SESSIONS` in `wellness.py`, UI holt sie über `api.well_info()`): Schritte `(Sekunden, Beat von, Beat bis)`, erster Schritt = Vorlauf 10 Hz.
   focus 30 min (10→16, Fokus-Modulation an), relax 20, meditate 25, nap 20 (endet mit 14 Hz zum Aufwachen), sleep 45 (10→6→2,5→1,5, Tiefschlaf-Rauschen an), gamma 30 (40 Hz isochron).
   `settings.session = {id, t0, mode}`; ist sie vorbei, setzt die Engine `session = None` und `status.well.done`.
@@ -118,19 +121,19 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 - **Tray** (`pystray` + `Pillow`, in requirements): Ein/Aus, Frequenz, Sitzungen, Fokus-Modulation, Mini-Player, Beenden. Fehlt das Paket, läuft alles ohne Tray.
 - **Mini-Player**: `api.mini(on)` → Fenster 380×236 + immer oben; `body.mini` zeigt nur `#miniBar`. `min_size` deshalb (360, 220).
 - **Medientasten**: für Playlists über `navigator.mediaSession` + stilles `<audio>`.
-- **3D-Cymatics**: Vollbild (⛶ am Orb), 7000 Partikel wandern auf die Knotenlinien der Chladni-Platte (n, m aus der Frequenz).
+- **3D-Cymatics**: Vollbild (⛶ am Orb). Seit 3.17 ersetzt durch den neuen Kymatik-Viewer in `v317.js` (siehe 3f); der alte `immerse()` in `v314.js` ist nur noch Rückfall.
 - **Niedrige Verzögerung**: `low_latency` → Puffer 15 statt 40 ms (Neustart der Engine). Anzeige der Anteile in den Einstellungen (`status.lat_parts`).
 - Profil „voice“ jetzt 2048/8 statt 2048/4.
 
 ## 3d. Brainwave-Player + Gateway-Meditation (seit 3.15, `gateway.py` + `ui/v315.js` + `v315.css`)
 
-- **Player-Leiste wie Spotify** (immer unten): Cover, Titel, Live-Hz, ⏮ ▶/⏸ ⏭, Fortschritt (bei Reisen spulbar), Lautstärke (`gw_level`), Titelliste. Auch im Mini-Player (▶/⏸ oben rechts), im Tray und über Medientasten (wenn keine Playlist läuft).
+- **Player-Leiste wie Spotify** (immer unten): Cover, Titel, Live-Hz, ⏮ ▶/⏸ ⏭, Fortschritt (bei Reisen spulbar), seit 3.17 Knopf **„Mix“** (`#bwbMix`, siehe 3f), Titelliste, Lautstärke (`gw_level`). Auch im Mini-Player (▶/⏸ oben rechts), im Tray und über Medientasten (wenn keine Playlist läuft).
 - **Ein Play-Knopf für alles** (`api.bw_toggle`): pausiert/startet, was gerade läuft – Gateway-Reise (`settings.gw.paused`, Position eingefroren) → Sitzung (`session.paused_at`, Zeit wird beim Weiterspielen nachgeschoben) → Brainwave-Schichten (`binaural`) → Takt (`beat_on`). Läuft nichts, startet die zuletzt genutzte Quelle (`cfg.bw_last`) bzw. die Gateway-Meditation. Schaltet Aurelune bei Bedarf ein.
 - **Skip** (`api.bw_skip(±1)`): Reise = nächster/voriger Abschnitt (zurück: erst Anfang des Abschnitts, wenn > 5 s), Sitzung = nächster Schritt, Schichten = nächstes Preset, Takt = nächste Frequenz. `api.bw_seek(sek)`, `api.bw_play(id, track, pos)`, `api.bw_stop()`, `api.bw_info()`.
 - **Reisen** (`JOURNEYS`): `gateway` 52 min (Einstimmung 10 Hz → Focus 3 → Focus 10 (Theta 4 + Delta 1,5) → Focus 12 (+Gamma 40) → Focus 15 → Focus 21 → Rückkehr 12 Hz), `gateway_short` 25 min, `focus10` 30 min.
 - **7 Schichten gleichzeitig** (`SLOTS`, Träger = Obertöne von 27 Hz): Delta 108, Theta 162, Alpha 216, Ziel binaural 135, **Ziel isochron 270** (gleicher Beat wie Ziel binaural), Schumann/Beta 189, Gamma 324 Hz. Darunter rosa „Brandung“ (Welle alle 10 s, `gw_surf`). Beats/Anteile gleiten (τ 5 s), Pause/Play blendet 1,5 s.
 - `gw_phones` an = binaural (Kopfhörer), aus = monaural (Lautsprecher, beide Töne auf beiden Ohren). Pegel: Boden −40…−12 dBFS RMS über `gw_level`, mit Musik ~14 dB darunter.
-- Engine: nach `Wellness.process`, vor Gehörschutz/Limiter; am Ende setzt die Engine `gw = None`. Status: `status.gw = {now:{id,track,pos,dur,paused}, master, layers:[{key,kind,left,right,beat,share}]}` → Live-Tabelle im Reiter „Meditation“.
+- Engine: nach Wellness, als Quelle `gw` in den AutoMix (3.17), dann Gehörschutz/Limiter; am Ende setzt die Engine `gw = None`. Status: `status.gw = {now:{id,track,pos,dur,paused}, master, layers:[{key,kind,left,right,beat,share}]}` → Live-Tabelle im Reiter „Meditation“.
 - Ehrlich: Monroe veröffentlicht die genauen Hemi-Sync-Mischungen nicht; Abschnitte folgen den veröffentlichten Bereichen. Wirkung nicht garantiert, kein Medizinprodukt (steht so auch in der App).
 - Getestet (Sandbox): Frequenzen per FFT exakt (z. B. 107,25 / 108,75 Hz bei Delta 1,5), Skip ohne Knacken, ~0,3 ms CPU pro 21-ms-Block, API-Abläufe (Pause/Weiter/Skip/Seek/Sitzung/Schichten), UI ohne JS-Fehler.
 
@@ -153,6 +156,9 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 - **`app.py mix_optimize()`** (Knopf „✨ Optimal mischen“): misst, was gerade läuft, und setzt `beat_level` (Ziel −18 dB unter Musik bzw. −30 dBFS ohne), `sleep_level` (−14 dB bzw. −24 dBFS), `gw_level` 0,5 / 0,57, `gw_surf` 0,4, `bin_auto`, `mix_auto`, Gehörschutz an (max. −10 dBFS). Antwort enthält `changes` + Empfehlung für Playlist-Musik/Natur (`pl` 80 % / 30–45 %), die die UI über `#plMv/#plNv` setzt. „Rückgängig“ stellt die alten Werte wieder her.
 - **UI (`v317.js`)**: Knopf `#bwbMix` rechts in der Player-Leiste (roter Punkt = zu laut) → Popover `#mixPop`: je aktiver Quelle Live-Pegel (dB, grün/gelb/rot), Regler + %, „Auto“-Chip bei den Schichten, „Alle Quellen zeigen“, Summe (Ausgang, Zusatzklänge x dB unter der Musik, Auto-Mix-/Gehörschutz-/Limiter-Absenkung), Schalter Auto-Mix, Abstand zur Musik.
 - **3D-Kymatik** (`AureluneV317.cymatics`, ersetzt `AureluneWellness.immerse`, Knöpfe `fsGo/fsGo2` + „✨ 3D-Kymatik“ im Meditation-Kopf): 5 Ansichten – Platte 3D (Sand-Partikel wandern auf die Knotenlinien), Wasser (Faraday-Wellen als 3D-Oberfläche), Kugel (Kugelflächenfunktion), Mandala (Wasser von oben, CymaScope-artig, n-fach symmetrisch), Sand (Chladni von oben). Optionen (`localStorage aur.cym`): 7 Farbschemata, Frequenz Live (lautester Ausgangston) oder fest (Eingabe + Solfeggio-Chips), Qualität, Auto-Drehen + Tempo, Klang-Reaktion, Lichtspuren, Info. Maus ziehen = drehen, Rad = Zoom, Doppelklick = zurücksetzen, Tasten 1–5, ←/→ Halbton, Leertaste Pause, H ausblenden, Esc schließen, Bild speichern (PNG). Gleiche Frequenz = immer gleiche Figur (`modes(hz)`). Canvas 2D, Partikel in 8 Helligkeitsstufen gebündelt gezeichnet.
+- Neue Einstellungen (`engine.settings`, gespeichert in `settings.json`): `mix_auto` (True), `mix_gap_db` (6.0).
+- Getestet (Sandbox): Offline-Test `AutoMix` mit Musik −20 dBFS + Gateway/Takt/Schlaf auf Maximum → Zusatzklänge auf −26 dBFS begrenzt (6 dB unter der Musik), ohne Musik auf −18 dBFS; ohne Auto-Mix −9,8 dBFS. API-Test mit Mock-Audio: `status.mix` + `mix_optimize` (Schlaf-Rauschen −13 → −30 dB). UI: Popover in 1366/1024/820 px, Optimal mischen, Rückgängig, Regler, Schließen per Klick daneben/Esc; Kymatik alle 5 Ansichten + Optionen, keine JS-Fehler, keine horizontale Scrollbar. Headless ohne GPU 18–28 fps (auf echtem PC schneller).
+- Ehrlich: Pegel sind digitale dBFS-Werte (nicht die echte Lautstärke im Ohr); die Lautstärke des Musikprogramms kann Aurelune nur anzeigen, nicht regeln; die Kymatik ist eine physikalisch angelehnte Simulation (Chladni/Faraday), keine Messung.
 
 ## 4. Dateien (Studio)
 
@@ -209,6 +215,9 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 - Engine-Änderungen offline prüfen: `sounddevice` stubben (`sys.modules['sounddevice'] = types.ModuleType(...)`),
   dann `engine`/`dsp` importieren. UI-Vorschau: `index.html` mit einem Mock für `window.pywebview.api` in
   Headless-Chromium öffnen (`get_state` braucht `settings`, `devices`, `outputs`, `auto_out`, `check`).
+- **Neues Python-Modul?** In `installer/update.ps1` in den Selbsttest (`import dsp, winaudio, wellness, gateway, mixer`) aufnehmen, sonst wird ein Importfehler erst beim Start bemerkt.
+- **Übertragung über PlazCode** (Chat steuert Adrians PC, Workspace `C:\Users\liket\PlazCodeWorkspace`): pro Nachricht genau EIN Befehl (`run_command` / `write_file`). Inline-Quoting in `run_command` ist unzuverlässig → immer ein `.ps1` schreiben und mit `powershell -NoProfile -ExecutionPolicy Bypass -File x.ps1` ausführen. Bewährt: geänderte Dateien als ZIP hochladen (z. B. litterbox.catbox.moe, 1 h), Skript `apply-3XX.ps1` lädt es, prüft SHA256, `git pull`, entpackt in `Aurelune-repo`, `git add/commit/push` (Commit-Nachricht ohne Leerzeichen, mit Bindestrichen), startet `update.ps1` und zeigt `installed-version.txt` + Log-Ende.
+- Startet Aurelune nach einem Update nicht von selbst, prüfen: `settings.json` → `power` (false = Adrian hatte es vorher ausgeschaltet, das ist korrekt so).
 - Gesundheit: Keine Heilversprechen in Texten. Forschung zu binauralen Beats ist gemischt
   (Meta-Analyse Garcia-Argibay 2019: mittlerer Effekt auf Angst/Aufmerksamkeit), für 432 Hz/Solfeggio gibt es
   keine belastbaren Belege. Hinweis „nicht beim Autofahren, nicht bei Epilepsie“ beibehalten.
@@ -243,11 +252,12 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 
 ## 9. Offene Punkte / Ideen
 
-Erledigt in 3.14: Abläufe mit Frequenzverlauf, Isochron/Monaural, 40 Hz, braunes Rauschen, Klangschalen, Sleep mit Ausblenden.
+Erledigt in 3.14: Abläufe mit Frequenzverlauf, Isochron/Monaural, 40 Hz, braunes Rauschen, Klangschalen, Sleep mit Ausblenden. Erledigt in 3.17: Lautstärke-Übersicht aller Quellen + optimaler Mix, bessere 3D-Kymatik.
 Bewusst **nicht** gebaut (Adrians Wunsch): Wirkungs-Tagebuch.
 
-1. 3.16-Redesign im echten WebView2-Fenster ansehen (Abstände, Schrift). 3.15 auf Adrians PC prüfen: Player-Leiste, Gateway-Reise mit Kopfhörern, Medientasten. 3.14 prüfen: Tray (pystray), Mini-Player-Größe, Medientasten in WebView2, 8D-Klang mit echter Musik.
-2. **Eigener Mix**: Beats/Träger/Anzahl frei wählen und speichern; eigene Sitzungen bauen.
+1. 3.17 auf Adrians PC prüfen: Mix-Popover mit echter Musik (Pegel, „Optimal mischen“, Auto-Mix hörbar ok?), Kymatik-Bildrate in WebView2. 3.16-Redesign im echten WebView2-Fenster ansehen (Abstände, Schrift). 3.15 auf Adrians PC prüfen: Player-Leiste, Gateway-Reise mit Kopfhörern, Medientasten. 3.14 prüfen: Tray (pystray), Mini-Player-Größe, Medientasten in WebView2, 8D-Klang mit echter Musik.
+2. **Eigener Mix**: Beats/Träger/Anzahl frei wählen und speichern; eigene Sitzungen bauen. Mix-Voreinstellungen speichern (z. B. „Schlafen“, „Arbeiten“).
+7. Kymatik: optional WebGL-Version für noch mehr Partikel; Kymatik auch in der Mobile-App.
 3. Gehirnwellen + Sitzungen in die Mobile-App (Web Audio).
 4. Lizenz-Geheimwort der Mobile-App ändern (siehe oben).
 5. Playlists: mehr Stücke/Instrumente (Gitarre, Flöte), eigene Playlists.
