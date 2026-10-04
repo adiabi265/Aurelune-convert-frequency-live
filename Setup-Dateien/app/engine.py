@@ -17,6 +17,7 @@ import sounddevice as sd
 from dsp import PhaseLockedPitchShifter, SincResampler, SpectrumProbe, Limiter, BinauralGenerator, TuningDetector, CenteredTuning
 from wellness import Wellness
 from gateway import GatewayPlayer
+from mixer import AutoMix
 
 PROFILES = {'music': (4096, 8), 'voice': (2048, 8), 'precision': (8192, 8)}   # 3.14: voice 2048/8 = cleaner speech
 
@@ -81,7 +82,9 @@ class Engine:
                          'ear_on': True, 'ear_max_db': -10.0, 'ear_tame': True,
                          'low_latency': False,
                          # 3.15 brainwave player (gateway.py)
-                         'gw': None, 'gw_level': 0.5, 'gw_phones': True, 'gw_surf': 0.5}
+                         'gw': None, 'gw_level': 0.5, 'gw_phones': True, 'gw_surf': 0.5,
+                         # 3.17 auto-mix (mixer.py)
+                         'mix_auto': True, 'mix_gap_db': 6.0}
         self.running = False
         self.lock = threading.Lock()
         self.istream = self.ostream = None
@@ -146,6 +149,7 @@ class Engine:
         self.binaural = BinauralGenerator(self.in_sr)
         self.well = Wellness(self.in_sr)
         self.gw = GatewayPlayer(self.in_sr)
+        self.mix = AutoMix(self.in_sr)
         self.resampler = SincResampler(2, self.out_sr / self.in_sr)
         self.q = queue.Queue(maxsize=800)
         self.ring = np.zeros((2, self.out_sr * 2), dtype=np.float32)
@@ -303,22 +307,26 @@ class Engine:
                 else:
                     lvl = min(0.5, max(0.0, float(s.get('bin_level', 0.2))))
                 self.bin_eff = lvl
+                adds = {}
                 if s.get('binaural') or self.binaural.active:   # brainwave layers on top (after the proof)
-                    y = y + self.binaural.process(y.shape[1], bool(s.get('binaural')), s.get('bin_preset'),
+                    adds['bin'] = self.binaural.process(y.shape[1], bool(s.get('binaural')), s.get('bin_preset'),
                                                   lvl,
                                                   min(1.0, max(0.0, float(s.get('bin_noise', 0.3)))),
                                                   s.get('bin_count', 4))
-                y = self.well.process(y, s, time.time() + self.play_lag, self.mus_rms)   # 3.14 wellness
+                y, wadds = self.well.process_split(y, s, time.time() + self.play_lag, self.mus_rms)   # 3.14 wellness
+                adds.update(wadds)
                 if self.well.done and isinstance(s.get('session'), dict) and s['session'].get('id') == self.well.done:
                     s['session'] = None
                 if s.get('gw') or self.gw.active:                                          # 3.15 gateway journey
                     z = self.gw.process(y.shape[1], s, time.time() + self.play_lag, self.mus_rms)
                     if z is not None:
-                        y = y + z
+                        adds['gw'] = z
                     if self.gw.done and s.get('gw'):
                         s['gw'] = None
+                y = self.mix.process(y, adds, s)                                           # 3.17 meters + auto-mix
                 y = self.well.guard(y, s)                                                  # hearing protection
                 y = self.limiter.process(y)
+                self.mix.meter_out(y, H / self.in_sr)
                 # clock drift compensation between the two devices
                 # Clock drift between the two devices is only ~10-100 ppm. A slow, damped PI loop on the
                 # averaged buffer fill corrects it without turning normal buffer jitter into pitch wobble.
@@ -380,6 +388,7 @@ class Engine:
         r['bin_level_eff'] = float(self.bin_eff)
         r['well'] = self.well.status(self.settings, time.time())
         r['gw'] = self.gw.status(self.settings)
+        r['mix'] = self.mix.status(self.settings)
         r['lat_parts'] = {'lock': self.look / self.in_sr * 1000, 'fft': self.shifter.N / self.in_sr * 1000,
                           'buffer': self.target_fill / self.out_sr * 1000, 'low': bool(self.settings.get('low_latency'))}
         r['binaural'] = {'on': bool(self.settings.get('binaural')), 'preset': self.binaural.preset,

@@ -564,6 +564,42 @@ class Api:
     def bw_stop(self, external=False):
         return self._bw_set({'gw': None}, external)
 
+    @safe
+    def mix_optimize(self):
+        """3.17 one-click optimal mix: measures what plays right now and sets every added sound to a level that sits
+        clearly under the music (or, without music, at a calm listening level). Auto-Mix + ear guard stay on."""
+        e, s = self._engine, self._engine.settings
+        mx = getattr(e, 'mix', None) if e.running else None
+        music = bool(mx and mx.music_present())
+        mus = mx.mus_long if music else 0.0
+        meas = dict(mx.rms) if mx else {}
+        patch, ch = {'mix_auto': True, 'mix_gap_db': 6.0, 'bin_auto': True, 'ear_on': True, 'ear_tame': True}, []
+
+        def lin(db):
+            return 10 ** (db / 20)
+
+        def scale(key, src, rel, ab, lo, hi, default):
+            cur = float(s.get(key, default))
+            want = mus * lin(rel) if music else lin(ab)
+            m = meas.get(src, 0.0)
+            if m > 1e-5 and cur > 0:
+                patch[key] = round(min(hi, max(lo, cur * want / m)), 3)
+            else:
+                patch[key] = default
+        scale('beat_level', 'beat', -18, -30, 0.05, 1.0, 0.35)
+        scale('sleep_level', 'sleep', -14, -24, 0.05, 1.0, 0.25 if music else 0.35)
+        patch['gw_level'] = 0.5 if music else 0.57
+        patch['gw_surf'] = 0.4
+        if float(s.get('ear_max_db', -10.0)) > -10.0:
+            patch['ear_max_db'] = -10.0
+        for k, v in patch.items():
+            if s.get(k) != v:
+                ch.append({'key': k, 'old': s.get(k), 'new': v})
+        st = self.set_settings(patch)
+        log.info('mix_optimize music=%s changes=%s', music, [(c['key'], c['new']) for c in ch])
+        return {'ok': True, 'settings': st, 'changes': ch, 'music': music,
+                'music_db': (20 * __import__('math').log10(mus) if music else None), 'pl': {'mv': 0.8, 'nv': 0.3 if music else 0.45}}
+
     def _routines(self):
         r = self._cfg.get('routines')
         if not isinstance(r, dict):

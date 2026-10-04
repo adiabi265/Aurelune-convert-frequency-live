@@ -146,6 +146,14 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 - Responsive: ≤1179 px 2-Spalten-Raster, ≤1100 px Live einspaltig, ≤900 px alles einspaltig; `prefers-reduced-motion` schaltet Animationen ab; `:focus-visible` 2 px gold.
 - QA (Sandbox, Mock-API): 1160×780, 1366×768, 1024×700, 820×700, Mini-Player, DE + EN – keine JS-Fehler, keine horizontale Scrollbar, keine Buttons > 430 px; Klicktests für Frequenz, Eigene, Filter, Presets, Schichten, Sprache, Playlists, Naturklänge, Sitzung, Routinen, Klangschalen, Resonanz, Updates, Diagnose, Log, Profil.
 
+## 3f. Optimaler Mix + neue 3D-Kymatik (seit 3.17, `mixer.py` + `ui/v317.js` + `v317.css`)
+
+- **Signalweg**: `engine.py` sammelt alle Zusatzklänge getrennt (`adds`: `bin` Brainwave-Schichten, `beat` Takt/Sitzung, `pad` Atem-Ton, `sleep` Schlaf-Rauschen, `bowls` Klangschalen, `gw` Gateway-Reise). Dafür liefert `Wellness.process_split()` (Musik, {Quelle: Signal}); `Wellness.process()` gibt es weiter (summiert). Danach `AutoMix.process(musik, adds, s)` → Gehörschutz → Limiter.
+- **`mixer.py` / `AutoMix`**: misst jede Quelle (RMS, 0,4 s geglättet) + Ausgang; Musik-Langzeitpegel (steigt in 1,5 s, fällt in 8 s). **Auto-Mix** (`mix_auto`, Standard an): alle Zusatzklänge zusammen höchstens `mix_gap_db` (Standard 6 dB; UI: Dezent 10 / Normal 6 / Deutlich 3) unter der Musik; ohne Musik (< −45 dBFS) höchstens −18 dBFS, absolut nie über −14 dBFS. Regelung nur auf den Zusatzklängen (Angriff 0,3 s, Freigabe 2,5 s) – die Musik selbst wird nie leiser gemacht. Status `mix` = {`db` je Quelle, `adds_db`, `out_db`, `cap_db`, `auto`, `auto_red_db`, `music`, `gap_db`}.
+- **`app.py mix_optimize()`** (Knopf „✨ Optimal mischen“): misst, was gerade läuft, und setzt `beat_level` (Ziel −18 dB unter Musik bzw. −30 dBFS ohne), `sleep_level` (−14 dB bzw. −24 dBFS), `gw_level` 0,5 / 0,57, `gw_surf` 0,4, `bin_auto`, `mix_auto`, Gehörschutz an (max. −10 dBFS). Antwort enthält `changes` + Empfehlung für Playlist-Musik/Natur (`pl` 80 % / 30–45 %), die die UI über `#plMv/#plNv` setzt. „Rückgängig“ stellt die alten Werte wieder her.
+- **UI (`v317.js`)**: Knopf `#bwbMix` rechts in der Player-Leiste (roter Punkt = zu laut) → Popover `#mixPop`: je aktiver Quelle Live-Pegel (dB, grün/gelb/rot), Regler + %, „Auto“-Chip bei den Schichten, „Alle Quellen zeigen“, Summe (Ausgang, Zusatzklänge x dB unter der Musik, Auto-Mix-/Gehörschutz-/Limiter-Absenkung), Schalter Auto-Mix, Abstand zur Musik.
+- **3D-Kymatik** (`AureluneV317.cymatics`, ersetzt `AureluneWellness.immerse`, Knöpfe `fsGo/fsGo2` + „✨ 3D-Kymatik“ im Meditation-Kopf): 5 Ansichten – Platte 3D (Sand-Partikel wandern auf die Knotenlinien), Wasser (Faraday-Wellen als 3D-Oberfläche), Kugel (Kugelflächenfunktion), Mandala (Wasser von oben, CymaScope-artig, n-fach symmetrisch), Sand (Chladni von oben). Optionen (`localStorage aur.cym`): 7 Farbschemata, Frequenz Live (lautester Ausgangston) oder fest (Eingabe + Solfeggio-Chips), Qualität, Auto-Drehen + Tempo, Klang-Reaktion, Lichtspuren, Info. Maus ziehen = drehen, Rad = Zoom, Doppelklick = zurücksetzen, Tasten 1–5, ←/→ Halbton, Leertaste Pause, H ausblenden, Esc schließen, Bild speichern (PNG). Gleiche Frequenz = immer gleiche Figur (`modes(hz)`). Canvas 2D, Partikel in 8 Helligkeitsstufen gebündelt gezeichnet.
+
 ## 4. Dateien (Studio)
 
 | Datei | Inhalt |
@@ -155,12 +163,13 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 | `dsp.py` | DSP: `TuningDetector`, `CenteredTuning`, `PhaseLockedPitchShifter`, `SpectrumProbe`, `SincResampler`, `Limiter`, `BinauralGenerator`, `bin_layers` |
 | `winaudio.py`, `AudioSwitch.cs` | Windows-Standard-Audiogerät lesen/setzen |
 | `guard.py` | Ton-Schutz bei Absturz |
+| `mixer.py` | 3.17: Pegel aller Quellen + Auto-Mix (Zusatzklänge unter der Musik) |
 | `gateway.py` | 3.15: Gateway-/SeptaSync-Reisen, 7 Schichten, Brainwave-Player |
 | `wellness.py` | 3.14: Sitzungen, Fokus-Modulation, Atem, Takt, Tiefschlaf, 8D, Klangschalen, Gehörschutz |
 | `updater.py` | In-App-Updates von GitHub (`version.txt` vergleichen, ZIP laden, `installer/update.ps1` starten) |
 | `version.txt`, `CHANGELOG.txt` | Version + Änderungen (die App liest beide von GitHub!) |
 | `ui/index.html`, `app.js`, `style.css`, `desk.css`, `i18n.js`, `frequencies.js`, `update.js` | Oberfläche |
-| `ui/v38.js` … `v316.js` (+ `v38.css` … `v316.css`; v314 = Wellness, v315 = Brainwave-Player, v316 = Redesign) | Versions-Patches für die UI (Texte, neue Bedienelemente) – werden nach `app.js` geladen |
+| `ui/v38.js` … `v317.js` (+ `v38.css` … `v317.css`; v314 = Wellness, v315 = Brainwave-Player, v316 = Redesign, v317 = Mix + 3D-Kymatik) | Versions-Patches für die UI (Texte, neue Bedienelemente) – werden nach `app.js` geladen |
 | `Setup-Dateien/installer/*.ps1` | Setup (Python, WebView2, VB-CABLE), Update, Deinstallation |
 | `Setup-Dateien/installer/autoupdate.ps1` + `.vbs` | Hintergrund-Updater (seit 3.13): startet unsichtbar bei der Windows-Anmeldung (HKCU Run `AureluneStudioUpdater`), prüft alle 3 min `version.txt` auf GitHub und startet `update.ps1 -Background` |
 | `Setup-Dateien/installer/SetupStub.cs` | Quelltext der `Aurelune-Studio-Setup.exe` (Online-Setup, Build-Befehl steht im Kopf der Datei) |
@@ -216,6 +225,7 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 
 ## 8. Versionsverlauf (Kurz)
 
+- **3.17.0** – „Mix“-Knopf in der Player-Leiste: alle Lautstärken mit Live-Pegeln, „✨ Optimal mischen“ + Rückgängig, Auto-Mix (Zusatzklänge bleiben unter der Musik, `mixer.py`); neue 3D-Kymatik mit 5 Ansichten (Platte, Wasser, Kugel, Mandala, Sand), Farben, Qualität, Drehen/Zoom, Live/feste Frequenz, Bild speichern.
 - **3.16.0** – UI-Redesign: Design-Tokens, ruhigere Flächen, ein Button-System, kompakte Live-Ansicht (Start-Button, Zielfrequenz-Box, Live-Messung mit Leerzustand, Gehirnwellen einklappbar), Frequenz-Filter, Playlists zweispaltig, Wellness- und Einstellungs-Unterreiter, Diagnose-Liste, DE/EN-Umschalter in der Seitenleiste, Barrierefreiheit (Fokus, reduzierte Bewegung).
 - **3.15.0** – Brainwave-Player wie Spotify (⏮ ▶/⏸ ⏭, Fortschritt, Lautstärke; ein Play-Knopf für Reise/Sitzung/Schichten/Takt), Reiter „Meditation“ mit Gateway-Reisen (7 Schichten, Isochron + Binaural auf derselben Zielfrequenz, Brandung) und Live-Frequenz-Tabelle.
 - **3.14.0** – Wellness-Reiter: Sitzungen mit Ablauf, Fokus-Modulation, Atem-Coach + Resonanz-Test, Isochron/Monaural, 40 Hz + Licht-Flackern, Tiefschlaf-Rauschen, 8D, Klangschalen/Gongs, Tagesroutinen, Gehörschutz; 3D-Cymatics-Vollbild, Mini-Player, Tray, Medientasten, Song-Zeile 440 → 432, Low-Latency.

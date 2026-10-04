@@ -333,8 +333,16 @@ class Wellness:
         self.beat_eff = None
 
     def process(self, y, s, t_play, mus_rms):
-        """y = music after the pitch shift (proof already measured). t_play = when this block will be heard."""
+        y, adds = self.process_split(y, s, t_play, mus_rms)
+        for v in adds.values():
+            y = y + v
+        return y
+
+    def process_split(self, y, s, t_play, mus_rms):
+        """y = music after the pitch shift (proof already measured). t_play = when this block will be heard.
+        3.17: returns (music, {source: added signal}) so the engine can meter and auto-mix every source."""
         n = y.shape[1]
+        adds = {}
         ses = s.get('session') or None
         sinfo = SESSIONS.get(ses['id']) if isinstance(ses, dict) and ses.get('id') in SESSIONS else None
         # 1) the music itself: focus modulation, breathing swell, 8D
@@ -359,7 +367,7 @@ class Wellness:
                 p0, p1 = self.tone_ph[0] + k * f0, self.tone_ph[1] + k * f0 * 1.5
                 self.tone_ph = np.mod([p0[-1], p1[-1]], TWO_PI)
                 pad = (np.sin(p0) + 0.5 * np.sin(p1)) * g * (0.3 + 0.7 * v)
-                y = y + np.vstack([pad, pad])
+                adds['pad'] = np.vstack([pad, pad])
         y = self.space.process(y, bool(s.get('space_on')), s.get('space_period', 12.0), s.get('space_depth', 0.8))
         # 2) added sounds: beat (session / isochronic / 40 Hz), sleep noise, bowls
         beat_on, beat_hz, mode, sg = bool(s.get('beat_on')), float(s.get('beat_hz', 10.0)), s.get('beat_mode', 'isochronic'), 1.0
@@ -381,15 +389,15 @@ class Wellness:
         self.beat_eff = beat_hz if beat_on else None
         b = self.beat.process(n, beat_on, mode, beat_hz, fc, min(0.6, lvl))
         if b is not None:
-            y = y + b
+            adds['beat'] = b
         z = self.sleep.process(n, bool(s.get('sleep_on')), s.get('sleep_color', 'pink'), s.get('sleep_level', 0.3),
                                bool(s.get('sleep_pulses', True)), s.get('sleep_t0'), s.get('sleep_delay', 30), t_play)
         if z is not None:
-            y = y + z
+            adds['sleep'] = z
         w = self.bowls.process(n)
         if w is not None:
-            y = y + w
-        return y
+            adds['bowls'] = w
+        return y, adds
 
     def guard(self, y, s):
         return self.ear.process(y, bool(s.get('ear_on', True)), float(s.get('ear_max_db', -10.0)), bool(s.get('ear_tame', True)))
