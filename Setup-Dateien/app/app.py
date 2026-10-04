@@ -83,6 +83,13 @@ class Api:
         self._last_poll = time.time()
         self._window = None
         self._watch_gen = 0
+        self._rev = 0                      # 3.14: bumped when tray / routines change settings -> UI reloads
+        self._mini = False
+        st = self._engine.settings          # a session never survives a restart
+        st['session'] = None
+        st['sleep_t0'] = time.time() if st.get('sleep_on') else 0.0
+        st['breath_t0'] = time.time()
+        threading.Thread(target=self._routine_loop, daemon=True).start()
 
     # ---------- info ----------
     @safe
@@ -325,7 +332,7 @@ class Api:
     # ---------- settings ----------
     @safe
     def set_settings(self, patch, ui=None):
-        restart = self._engine.running and any(k in patch and patch[k] != self._engine.settings.get(k) for k in ('quality', 'precision', 'lock_s'))
+        restart = self._engine.running and any(k in patch and patch[k] != self._engine.settings.get(k) for k in ('quality', 'precision', 'lock_s', 'low_latency'))
         self._engine.update(patch)
         self._cfg['settings'] = {k: v for k, v in self._engine.settings.items() if k != 'enabled'}
         if ui:
@@ -377,9 +384,130 @@ class Api:
     def status(self):
         self._last_poll = time.time()
         try:
-            return self._engine.status()
+            r = self._engine.status()
         except Exception as e:
-            return {'running': False, 'error': str(e)}
+            r = {'running': False, 'error': str(e)}
+        r['rev'] = self._rev
+        return r
+
+    # ---------- 3.14 wellness ----------
+    def _apply(self, patch, ui=None):
+        """Settings change from outside the window (tray, routines) -> UI reloads its state."""
+        r = self.set_settings(patch, ui)
+        self._rev += 1
+        return r
+
+    @safe
+    def well_info(self):
+        import wellness
+        return {'ok': True, 'sessions': wellness.session_info(), 'routines': self._routines(), 'tray': self._cfg.get('tray', True)}
+
+    @safe
+    def start_session(self, sid, mode=None, external=False):
+        import wellness
+        if sid not in wellness.SESSIONS:
+            return {'ok': False, 'code': 'E_GENERIC', 'error': 'unknown session'}
+        if not self._engine.running:
+            r = self.power_on()
+            if not r or r.get('ok') is False:
+                return r
+        patch = {'session': {'id': sid, 't0': time.time(), 'mode': mode or self._engine.settings.get('beat_mode', 'isochronic')},
+                 'binaural': False}
+        if sid == 'sleep' and self._cfg.get('sleep_with_noise', True):
+            patch.update(sleep_on=True, sleep_t0=time.time())
+        (self._apply if external else self.set_settings)(patch)
+        return {'ok': True, 'session': self._engine.settings['session']}
+
+    @safe
+    def stop_session(self, external=False):
+        (self._apply if external else self.set_settings)({'session': None})
+        return {'ok': True}
+
+    @safe
+    def strike(self, freq, kind='bowl', level=0.6):
+        """Singing bowl / gong through the engine (after the pitch shifter -> exact Hz). Off -> UI plays it itself."""
+        if not self._engine.running:
+            return {'ok': False, 'code': 'E_OFF'}
+        threading.Thread(target=self._engine.well.bowls.strike, args=(float(freq), kind, float(level)), daemon=True).start()
+        return {'ok': True}
+
+    def _routines(self):
+        r = self._cfg.get('routines')
+        if not isinstance(r, dict):
+            r = {'on': False, 'items': [{'t': '08:00', 'a': 'focus'}, {'t': '13:30', 'a': 'relax'}, {'t': '22:00', 'a': 'sleep'}]}
+        return r
+
+    @safe
+    def set_routines(self, r):
+        items = [{'t': str(i.get('t', '08:00'))[:5], 'a': i.get('a', 'focus')} for i in (r or {}).get('items', [])][:12]
+        self._cfg['routines'] = {'on': bool((r or {}).get('on')), 'items': items}
+        save_cfg(self._cfg)
+        return {'ok': True, 'routines': self._cfg['routines']}
+
+    def run_routine(self, action):
+        log.info('routine: %s', action)
+        if action in ('focus', 'relax', 'meditate', 'sleep', 'nap', 'gamma'):
+            return self.start_session(action, external=True)
+        if action == 'off':
+            return self._apply({'session': None, 'mod_on': False, 'sleep_on': False, 'beat_on': False, 'breath_on': False})
+        return {'ok': False}
+
+    def _routine_loop(self):
+        done = set()
+        while True:
+            time.sleep(15)
+            try:
+                r = self._routines()
+                if not r.get('on'):
+                    continue
+                now = time.strftime('%H:%M')
+                day = time.strftime('%Y-%m-%d')
+                for it in r.get('items', []):
+                    key = (day, it.get('t'), it.get('a'))
+                    if it.get('t') == now and key not in done:
+                        done.add(key)
+                        self.run_routine(it.get('a'))
+                        self._routine_msg = it.get('a')
+            except Exception as e:
+                log.warning('routine: %s', e)
+
+    @safe
+    def set_tray(self, on):
+        self._cfg['tray'] = bool(on)
+        save_cfg(self._cfg)
+        if on:
+            start_tray(self)
+        else:
+            stop_tray()
+        return {'ok': True, 'tray': bool(on)}
+
+    @safe
+    def mini(self, on):
+        """Mini player: small window that stays on top."""
+        self._mini = bool(on)
+        w = self._window
+        if w is not None:
+            try:
+                w.on_top = self._mini
+            except Exception:
+                pass
+            if self._mini:
+                w.resize(380, 236)
+            else:
+                w.resize(1180, 780)
+        return {'ok': True, 'mini': self._mini}
+
+    def show_window(self):
+        w = self._window
+        if w is not None:
+            try:
+                w.restore()
+            except Exception:
+                pass
+            try:
+                w.show()
+            except Exception:
+                pass
 
     # ---------- system ----------
     def _launch_cmd(self):
@@ -558,6 +686,84 @@ def run_browser_ui(api):
     srv.shutdown()
 
 
+_TRAY = {'icon': None}
+
+
+def _tuning_a4(hz):
+    import math
+    n = round(12 * math.log2(hz / 440.0))
+    return hz / 2 ** (n / 12) * 1.0 if hz != 432 else 432.0
+
+
+def start_tray(api):
+    """3.14: quick menu in the taskbar notification area (pystray). Never fatal."""
+    if _TRAY['icon'] is not None or not IS_WIN:
+        return
+    try:
+        import pystray
+        from PIL import Image
+    except Exception as e:
+        log.warning('tray unavailable: %s', e)
+        return
+    de = api._cfg.get('lang') == 'de'
+    L = (lambda d, e: d if de else e)
+
+    def freq(hz):
+        def f(icon, item):
+            api._apply({'target_a4': _tuning_a4(hz)}, {'presetHz': hz})
+        return f
+
+    def ses(sid):
+        def f(icon, item):
+            api.start_session(sid, external=True)
+        return f
+
+    def power(icon, item):
+        (api.power_off if api._engine.running else api.power_on)()
+        api._rev += 1
+
+    def modt(icon, item):
+        api._apply({'mod_on': not api._engine.settings.get('mod_on')})
+
+    def quit_app(icon, item):
+        api.power_off(remember=False)
+        stop_tray()
+        try:
+            api._window.destroy()
+        except Exception:
+            os._exit(0)
+    M, I = pystray.Menu, pystray.MenuItem
+    menu = M(
+        I(L('Aurelune öffnen', 'Open Aurelune'), lambda i, it: api.show_window(), default=True),
+        I(lambda it: L('Ausschalten', 'Turn off') if api._engine.running else L('Einschalten', 'Turn on'), power),
+        I(L('Frequenz', 'Frequency'), M(*[I('%s Hz' % hz, freq(hz), checked=lambda it, hz=hz: (api._cfg.get('ui') or {}).get('presetHz', 432) == hz, radio=True)
+                                       for hz in (432, 528, 639, 741, 852, 963, 396, 417, 174)])),
+        I(L('Sitzung starten', 'Start session'), M(I(L('🎯 Fokus', '🎯 Focus'), ses('focus')), I(L('🌿 Entspannen', '🌿 Relax'), ses('relax')),
+                                                     I(L('🧘 Meditation', '🧘 Meditation'), ses('meditate')), I(L('🌙 Einschlafen', '🌙 Fall asleep'), ses('sleep')),
+                                                     I(L('⏹ Sitzung beenden', '⏹ Stop session'), lambda i, it: api.stop_session(external=True)))),
+        I(L('Fokus-Modulation', 'Focus modulation'), modt, checked=lambda it: bool(api._engine.settings.get('mod_on'))),
+        I(L('Mini-Player', 'Mini player'), lambda i, it: (api.show_window(), api.mini(not api._mini))),
+        M.SEPARATOR,
+        I(L('Beenden', 'Quit'), quit_app))
+    try:
+        img = Image.open(os.path.join(HERE, 'aurelune.ico'))
+        icon = pystray.Icon('AureluneStudio', img, 'Aurelune Studio', menu)
+        icon.run_detached()
+        _TRAY['icon'] = icon
+    except Exception as e:
+        log.warning('tray failed: %s', e)
+
+
+def stop_tray():
+    ic = _TRAY.get('icon')
+    _TRAY['icon'] = None
+    if ic is not None:
+        try:
+            ic.stop()
+        except Exception:
+            pass
+
+
 def start_guard():
     """Detached watchdog process: restores a real speaker if this process dies while on CABLE."""
     if not IS_WIN:
@@ -610,9 +816,11 @@ def main():
         return
     try:
         window = webview.create_window(TITLE, resource(os.path.join('ui', 'index.html')), js_api=api,
-                                       width=1180, height=780, min_size=(900, 620), background_color='#0e0c16',
+                                       width=1180, height=780, min_size=(360, 220), background_color='#0e0c16',
                                        minimized=minimized)
         api._window = window
+        if api._cfg.get('tray', True):
+            threading.Thread(target=start_tray, args=(api,), daemon=True).start()
         window.events.closing += lambda: (api.power_off(remember=False), None)[1]  # pywebview needs a hashable return
         window.events.shown += lambda: threading.Thread(target=win_set_icon, daemon=True).start()
         # force the modern Chromium engine – the old IE fallback cannot run the UI
@@ -623,6 +831,7 @@ def main():
         if not IS_WIN and 'icon' in inspect.signature(webview.start).parameters:
             kw['icon'] = resource(os.path.join('ui', 'icon.png'))
         webview.start(**kw)
+        stop_tray()
     except Exception as e:
         log.error('webview failed (%s) – falling back to Edge app window\n%s', e, traceback.format_exc())
         run_browser_ui(api)

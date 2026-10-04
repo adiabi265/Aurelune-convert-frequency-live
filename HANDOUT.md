@@ -4,7 +4,7 @@
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.13.1** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.14.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---
@@ -100,6 +100,28 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
   schon auf Ziel, also Korrektur ≈ 0. Ist Aurelune aus, direkt auf die Lautsprecher. Sleep-Timer blendet die Playlist in 8 s aus.
 - Test-Hilfe: `window.AurelunePlaylists.play(id, index)` / `.pause()` / `._state()`.
 
+## 3c. Wellness (seit 3.14, `wellness.py` + `ui/v314.js` + `v314.css`)
+
+- Eigener Reiter „Wellness“. Audio läuft in der Engine **nach** der Beweis-Messung (`Wellness.process` in `engine._work`), danach `Wellness.guard` (Gehörschutz) und Limiter.
+- **Sitzungen** (`SESSIONS` in `wellness.py`, UI holt sie über `api.well_info()`): Schritte `(Sekunden, Beat von, Beat bis)`, erster Schritt = Vorlauf 10 Hz.
+  focus 30 min (10→16, Fokus-Modulation an), relax 20, meditate 25, nap 20 (endet mit 14 Hz zum Aufwachen), sleep 45 (10→6→2,5→1,5, Tiefschlaf-Rauschen an), gamma 30 (40 Hz isochron).
+  `settings.session = {id, t0, mode}`; ist sie vorbei, setzt die Engine `session = None` und `status.well.done`.
+- **Fokus-Modulation**: AM der Musik selbst (focus 16 / calm 10 / deep 6 Hz), Tiefe max. 60 %, Lautheit ausgeglichen.
+- **Atem-Coach**: `breath_t0` + `breath_bpm`; Kurve 40 % ein / 60 % aus (`breath_shape`, identisch in `breathV()` in v314.js). Engine rechnet mit `time.time() + play_lag`, damit Orb und Ton synchron sind. Resonanz-Test = subjektiv (6,5 → 4,5/min je 1 min, Bewertung 1–5).
+- **Takt** (`BeatGenerator`): isochron (Lautsprecher ok), monaural (Lautsprecher ok), binaural (Kopfhörer). Träger = Ziel-A4/2 (bzw. A4 bei ≥20 Hz isochron). Pegel automatisch ~14 dB unter der Musik.
+- **40 Hz**: Sitzung `gamma`; Licht-Flackern nur nach Epilepsie-Warnung + Häkchen, misst die Bildschirm-Hz (60 Hz → 30 Hz Flackern, ehrlich angezeigt), max. 30 min.
+- **Tiefschlaf** (Experiment): rosa/braunes Rauschen; Impulse = 5× 50 ms (+6 dB) im 1-s-Abstand, dann 6 s Pause, ab `sleep_delay` min nach `sleep_t0`. Open-loop, keine Wirkungsversprechen.
+- **8D**: Mitte des Mixes kreist (ILD + ITD 0,6 ms + dunkler hinten), 35 % Stereo-Breite bleibt.
+- **Klangschalen/Gongs**: `api.strike(hz, kind)` → Modalsynthese in der Engine nach dem Pitch-Shifter (exakt). Ist Aurelune aus, spielt die UI sie per Web Audio direkt.
+- **Gehörschutz** (`EarGuard`, Standard an): Sprünge > +6 dB über dem 10-s-Mittel werden gedämpft, RMS-Obergrenze `ear_max_db` (Standard −10 dBFS).
+- **Tagesroutinen**: `settings.json` → `routines {on, items:[{t:'08:00', a:'focus'}]}`; Thread `_routine_loop` in `app.py` (alle 15 s). Änderungen von außen (Routine, Tray) erhöhen `status.rev` → UI lädt neu.
+- **Tray** (`pystray` + `Pillow`, in requirements): Ein/Aus, Frequenz, Sitzungen, Fokus-Modulation, Mini-Player, Beenden. Fehlt das Paket, läuft alles ohne Tray.
+- **Mini-Player**: `api.mini(on)` → Fenster 380×236 + immer oben; `body.mini` zeigt nur `#miniBar`. `min_size` deshalb (360, 220).
+- **Medientasten**: für Playlists über `navigator.mediaSession` + stilles `<audio>`.
+- **3D-Cymatics**: Vollbild (⛶ am Orb), 7000 Partikel wandern auf die Knotenlinien der Chladni-Platte (n, m aus der Frequenz).
+- **Niedrige Verzögerung**: `low_latency` → Puffer 15 statt 40 ms (Neustart der Engine). Anzeige der Anteile in den Einstellungen (`status.lat_parts`).
+- Profil „voice“ jetzt 2048/8 statt 2048/4.
+
 ## 4. Dateien (Studio)
 
 | Datei | Inhalt |
@@ -109,6 +131,7 @@ Die früher genannten „0,2 Cent“ stammten aus einem einfacheren Test ohne na
 | `dsp.py` | DSP: `TuningDetector`, `CenteredTuning`, `PhaseLockedPitchShifter`, `SpectrumProbe`, `SincResampler`, `Limiter`, `BinauralGenerator`, `bin_layers` |
 | `winaudio.py`, `AudioSwitch.cs` | Windows-Standard-Audiogerät lesen/setzen |
 | `guard.py` | Ton-Schutz bei Absturz |
+| `wellness.py` | 3.14: Sitzungen, Fokus-Modulation, Atem, Takt, Tiefschlaf, 8D, Klangschalen, Gehörschutz |
 | `updater.py` | In-App-Updates von GitHub (`version.txt` vergleichen, ZIP laden, `installer/update.ps1` starten) |
 | `version.txt`, `CHANGELOG.txt` | Version + Änderungen (die App liest beide von GitHub!) |
 | `ui/index.html`, `app.js`, `style.css`, `desk.css`, `i18n.js`, `frequencies.js`, `update.js` | Oberfläche |
@@ -168,6 +191,8 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 
 ## 8. Versionsverlauf (Kurz)
 
+- **3.14.0** – Wellness-Reiter: Sitzungen mit Ablauf, Fokus-Modulation, Atem-Coach + Resonanz-Test, Isochron/Monaural, 40 Hz + Licht-Flackern, Tiefschlaf-Rauschen, 8D, Klangschalen/Gongs, Tagesroutinen, Gehörschutz; 3D-Cymatics-Vollbild, Mini-Player, Tray, Medientasten, Song-Zeile 440 → 432, Low-Latency.
+
 - **3.13.0** – Live-Updates: Hintergrund-Updater (alle 3 min, auch bei geschlossenem Fenster), App prüft alle 3 min; neues Online-Setup-EXE (`SetupStub.cs`), Root aufgeräumt (`README.md`, `Aurelune-Update.bat` entfernt).
 - **3.12.0** – Playlists (5 Themen, 21 live erzeugte Stücke, schon auf Zielfrequenz gestimmt) + wählbare Naturklänge pro Playlist.
 - **3.11.0** – Gehirnwellen stapelbar (2/4/7/8/16/32), Preset „Septa · 7 Wellen“ (SeptaSync-Prinzip), Träger als
@@ -179,15 +204,14 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 - **3.6.0** – Desktop-Layout. **3.5.0** – neue Startseite, Cymatics, Sleep-Timer. **3.4.x** – In-App-Updates.
   **3.3.1** – Präzisionsmodus, Cymatics, Gehirnwellen.
 
-## 9. Offene Punkte / Ideen (recherchiert, priorisiert)
+## 9. Offene Punkte / Ideen
 
-1. **Abläufe mit Frequenzverlauf** (z. B. Beat sinkt in 10 min von 10 auf 2 Hz; wie SBaGen/Gnaural-Zeitpläne)
-   – Zeitplan aus (Zeit, Ziel-Beat), Generator gleitet phasenkontinuierlich.
-2. **Isochrone + monaurale Töne** als Modus – funktionieren ohne Kopfhörer und mit Mono-Ausgang.
-3. **40-Hz-Gamma-Preset** (MIT-GENUS-Forschung) als isochroner 40-Hz-Takt, optional Cymatics-Flackern (Epilepsie-Hinweis!).
-4. **Eigener Mix**: Beats/Träger/Anzahl frei wählen und speichern.
-5. Mehr Rauscharten (braun, grün), Regen, Klangschalen.
-6. Sleep-Timer mit langsamem Ausblenden.
-7. Gehirnwellen in die Mobile-App (Web Audio).
-8. Lizenz-Geheimwort der Mobile-App ändern (siehe oben).
-9. Playlists: mehr Stücke/Instrumente (Gitarre, Flöte), Playlists in die Mobile-App, eigene Playlists zusammenstellen.
+Erledigt in 3.14: Abläufe mit Frequenzverlauf, Isochron/Monaural, 40 Hz, braunes Rauschen, Klangschalen, Sleep mit Ausblenden.
+Bewusst **nicht** gebaut (Adrians Wunsch): Wirkungs-Tagebuch.
+
+1. 3.14 auf Adrians PC prüfen: Tray (pystray), Mini-Player-Größe, Medientasten in WebView2, 8D-Klang mit echter Musik.
+2. **Eigener Mix**: Beats/Träger/Anzahl frei wählen und speichern; eigene Sitzungen bauen.
+3. Gehirnwellen + Sitzungen in die Mobile-App (Web Audio).
+4. Lizenz-Geheimwort der Mobile-App ändern (siehe oben).
+5. Playlists: mehr Stücke/Instrumente (Gitarre, Flöte), eigene Playlists.
+6. Echte Resonanz-Messung (HRV) wäre nur mit Pulssensor/Kamera möglich.

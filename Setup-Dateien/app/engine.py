@@ -15,8 +15,9 @@ import numpy as np
 import sounddevice as sd
 
 from dsp import PhaseLockedPitchShifter, SincResampler, SpectrumProbe, Limiter, BinauralGenerator, TuningDetector, CenteredTuning
+from wellness import Wellness
 
-PROFILES = {'music': (4096, 8), 'voice': (2048, 4), 'precision': (8192, 8)}
+PROFILES = {'music': (4096, 8), 'voice': (2048, 8), 'precision': (8192, 8)}   # 3.14: voice 2048/8 = cleaner speech
 
 
 def is_cable(name):
@@ -68,7 +69,16 @@ class Engine:
     def __init__(self):
         self.settings = {'enabled': True, 'target_a4': 432.0, 'auto': True, 'manual_ref': 440.0, 'quality': 'music',
                          'binaural': False, 'bin_preset': 'gateway', 'bin_count': 4, 'bin_level': 0.2, 'bin_noise': 0.3, 'bin_auto': True,
-                         'precision': True, 'lock_s': 0.75}
+                         'precision': True, 'lock_s': 0.75,
+                         # 3.14 wellness (wellness.py)
+                         'mod_on': False, 'mod_mode': 'focus', 'mod_depth': 0.5,
+                         'breath_on': False, 'breath_bpm': 6.0, 'breath_depth': 0.35, 'breath_tone': False, 'breath_t0': 0.0,
+                         'beat_on': False, 'beat_hz': 10.0, 'beat_mode': 'isochronic', 'beat_level': 0.5,
+                         'session': None, 'ses_mod': True,
+                         'sleep_on': False, 'sleep_color': 'pink', 'sleep_level': 0.3, 'sleep_pulses': True, 'sleep_delay': 30, 'sleep_t0': 0.0,
+                         'space_on': False, 'space_period': 12.0, 'space_depth': 0.8,
+                         'ear_on': True, 'ear_max_db': -10.0, 'ear_tame': True,
+                         'low_latency': False}
         self.running = False
         self.lock = threading.Lock()
         self.istream = self.ostream = None
@@ -131,11 +141,13 @@ class Engine:
             self.probe_ahead.detector = CenteredTuning(self.in_sr, 1024, lock_s)   # symmetric window around the played moment
         self.limiter = Limiter()
         self.binaural = BinauralGenerator(self.in_sr)
+        self.well = Wellness(self.in_sr)
         self.resampler = SincResampler(2, self.out_sr / self.in_sr)
         self.q = queue.Queue(maxsize=800)
         self.ring = np.zeros((2, self.out_sr * 2), dtype=np.float32)
         self.r_pos = self.w_pos = self.fill = 0
-        self.target_fill = int(self.out_sr * 0.04)  # 40 ms safety cushion
+        self.target_fill = int(self.out_sr * (0.015 if self.settings.get('low_latency') else 0.04))  # safety cushion (3.14: 15 ms in low-latency mode)
+        self.play_lag = N / self.in_sr + self.target_fill / self.out_sr
         self.fill_avg = float(self.target_fill)
         self.priming = True
         self.running = True
@@ -158,6 +170,10 @@ class Engine:
             self.stop()
             raise
         self.devices = (in_info['name'], out_info['name'])
+        try:
+            self.play_lag += (self.istream.latency or 0) + (self.ostream.latency or 0)
+        except Exception:
+            pass
 
     def stop(self):
         self.running = False
@@ -288,6 +304,10 @@ class Engine:
                                                   lvl,
                                                   min(1.0, max(0.0, float(s.get('bin_noise', 0.3)))),
                                                   s.get('bin_count', 4))
+                y = self.well.process(y, s, time.time() + self.play_lag, self.mus_rms)   # 3.14 wellness
+                if self.well.done and isinstance(s.get('session'), dict) and s['session'].get('id') == self.well.done:
+                    s['session'] = None
+                y = self.well.guard(y, s)                                                  # hearing protection
                 y = self.limiter.process(y)
                 # clock drift compensation between the two devices
                 # Clock drift between the two devices is only ~10-100 ppm. A slow, damped PI loop on the
@@ -348,6 +368,9 @@ class Engine:
         ic, ie = self.probe_in.detector.estimate()
         r['in_a4'], r['in_conf'] = float(ie), float(ic)
         r['bin_level_eff'] = float(self.bin_eff)
+        r['well'] = self.well.status(self.settings, time.time())
+        r['lat_parts'] = {'lock': self.look / self.in_sr * 1000, 'fft': self.shifter.N / self.in_sr * 1000,
+                          'buffer': self.target_fill / self.out_sr * 1000, 'low': bool(self.settings.get('low_latency'))}
         r['binaural'] = {'on': bool(self.settings.get('binaural')), 'preset': self.binaural.preset,
                          'gain': self.binaural.gain, 'mono': self.out_ch == 1,
                          'layers': self.binaural.layers(self.settings.get('bin_preset'), self.settings.get('bin_count'))}
