@@ -7,7 +7,7 @@
   } : {
     title:'🎶 All playlists', intro:'Choose your source: Spotify, Aurelune sounds or brainwave journeys. Everything stays in one place.', source:'Choose source', spotifySub:'Listen to your Spotify playlists through Aurelune', open:'Open Spotify', hint:'Turn on Aurelune in Live, open Spotify and play a playlist. All PC audio is tuned to your target frequency in real time.', made:'Ready-made Aurelune playlists', madeSub:'Generated live and tuned directly to your target frequency.', journeys:'Brainwave playlists', journeysSub:'Gateway and SeptaSync journeys – without a separate Meditation tab.', iso:'Isochronic beats', isoSub:'Add them directly to your brainwaves – speakers work too.'
   }; }
-  function openSpotify() { try { call('set_route_app','spotify'); call('open_url','https://open.spotify.com'); } catch(e) { window.open('https://open.spotify.com','_blank'); } }
+  function openSpotify() { try { var a=(typeof state!=='undefined'&&state&&state.route_apps)||[]; if(a.indexOf('*')<0&&a.indexOf('spotify')<0)a=a.concat(['spotify']); call('set_route_apps',a); call('open_url','https://open.spotify.com'); } catch(e) { window.open('https://open.spotify.com','_blank'); } }
   function sourceHub(play) {
     var x=copy(), h=$('audioSources');
     if(!h){ h=document.createElement('div'); h.id='audioSources'; h.className='audio-sources'; var intro=play.querySelector(':scope > .muted-p'); (intro||play.firstChild).insertAdjacentElement('afterend',h);

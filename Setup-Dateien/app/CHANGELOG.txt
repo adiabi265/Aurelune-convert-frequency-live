@@ -1,3 +1,9 @@
+3.20.0
+- Live komplett aufgeräumt: eine ruhige Hauptspalte mit Kymatik, Start/Stopp, Zielfrequenz und verbundenen Apps.
+- Mehrere Audio-Apps gleichzeitig verbinden; Auswahl und alle Einstellungen bleiben nach Neustart erhalten.
+- Aurelune startet nach einem Programmstart immer ausgeschaltet und wartet auf den manuellen Start.
+- Brainwaves und isochrone Beats liegen kompakt in einem optionalen Bereich; Messdetails wurden von Live entfernt.
+
 3.19.0
 - App-spezifisches Audio-Routing: Spotify oder eine andere geöffnete App kann einzeln durch Aurelune laufen.
 - Alle übrigen Programme bleiben direkt auf den normalen Windows-Lautsprechern.

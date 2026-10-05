@@ -1,27 +1,16 @@
-/* Aurelune 3.19 – choose which Windows app is processed; every other app stays on normal speakers. */
-(function () {
-  var $ = function (id) { return document.getElementById(id); };
-  var isDe = function () { return typeof lang !== 'undefined' && lang === 'de'; };
-  var busy = false;
-  function C() { return isDe() ? {
-    title:'Aurelune anwenden auf', hint:'Nur die gewählte App läuft durch Aurelune. Alle anderen Programme bleiben direkt auf deinen normalen Lautsprechern.', all:'Alle PC-Töne', running:'Geöffnete Apps', saved:'Wird automatisch verbunden, sobald die App geöffnet ist.', changed:'Audio-Quelle geändert', spotify:'Spotify'
-  } : {
-    title:'Use Aurelune for', hint:'Only the selected app runs through Aurelune. Every other program stays directly on your normal speakers.', all:'All PC audio', running:'Open apps', saved:'It will connect automatically as soon as the app opens.', changed:'Audio source changed', spotify:'Spotify'
-  }; }
-  function cleanName(n) { return String(n || '').toLowerCase().replace(/\.exe$/,''); }
-  function choices() {
-    var c=C(), out=[{v:'all',n:c.all},{v:'spotify',n:c.spotify}], seen={all:1,spotify:1};
-    var apps=(typeof state!=='undefined' && state && state.audio_apps)||[];
-    apps.forEach(function(a){var n=cleanName(a.name);if(!n||seen[n]||n==='python'||n==='pythonw'||n==='audioswitch318')return;seen[n]=1;var label=a.title&&a.title.length<70?a.title:a.name;out.push({v:n,n:label});});
-    return out;
-  }
-  function build(){
-    if($('routeCard'))return true;var home=$('view-home'),bin=$('binCard');if(!home||!bin)return false;
-    var card=document.createElement('div');card.id='routeCard';card.className='card route-card';
-    card.innerHTML='<div class="route-copy"><b id="routeTitle"></b><small id="routeHint"></small></div><div class="route-pick"><select id="routeApp"></select><span id="routeState"></span></div>';
-    bin.parentNode.insertBefore(card,bin);$('routeApp').onchange=async function(){if(busy)return;busy=true;var v=this.value;this.disabled=true;try{var r=await call('set_route_app',v);if(r&&r.ok!==false){if(typeof state!=='undefined'&&state){state.route_app=v;state.audio_apps=r.audio_apps||state.audio_apps;}if(typeof toast==='function')toast(C().changed);render();}}finally{busy=false;this.disabled=false;}};return true;
-  }
-  function render(){if(!build())return;var c=C(),sel=$('routeApp'),cur=(typeof state!=='undefined'&&state&&state.route_app)||'all', opts=choices();if(!opts.some(function(x){return x.v===cur;}))opts.push({v:cur,n:cur});var sig=opts.map(function(x){return x.v+'|'+x.n;}).join(';');if(sel.dataset.sig!==sig){sel.innerHTML=opts.map(function(x){return '<option value="'+x.v.replace(/"/g,'&quot;')+'">'+x.n.replace(/[&<>]/g,function(k){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[k];})+'</option>';}).join('');sel.dataset.sig=sig;}sel.value=cur;$('routeTitle').textContent=c.title;$('routeHint').textContent=c.hint;$('routeState').textContent=cur==='all'?'':c.saved;}
+/* Aurelune 3.20 – compact multi-app routing. */
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var isDe=function(){return typeof lang!=='undefined'&&lang==='de';};
+  var busy=false;
+  function T(){return isDe()?{title:'Audio-Apps',hint:'Nur verbundene Apps laufen durch Aurelune. Alles andere bleibt auf den normalen Lautsprechern.',connect:'Apps verbinden',done:'Fertig',none:'Noch keine App verbunden',saved:'Auswahl gespeichert',all:'Gesamter PC',spotify:'Spotify',open:'Geöffnete Apps'}:{title:'Audio apps',hint:'Only connected apps run through Aurelune. Everything else stays on the normal speakers.',connect:'Connect apps',done:'Done',none:'No app connected yet',saved:'Selection saved',all:'Entire PC',spotify:'Spotify',open:'Open apps'};}
+  function key(n){return String(n||'').toLowerCase().replace(/\.exe$/,'');}
+  function label(n){var m={spotify:'Spotify',brave:'Brave',chrome:'Google Chrome',msedge:'Microsoft Edge',discord:'Discord',vlc:'VLC',foobar2000:'foobar2000',musicbee:'MusicBee'};return m[n]||n.replace(/^./,function(x){return x.toUpperCase();});}
+  function current(){var a=(typeof state!=='undefined'&&state&&state.route_apps)||[];return Array.isArray(a)?a.slice():[];}
+  function options(){var t=T(),out=[{v:'spotify',n:t.spotify},{v:'*',n:t.all}],seen={spotify:1,'*':1};var apps=(typeof state!=='undefined'&&state&&state.audio_apps)||[];apps.forEach(function(a){var n=key(a.name);if(!n||seen[n]||/^(python|pythonw|audioswitch|aurelune)/.test(n))return;seen[n]=1;out.push({v:n,n:label(n),sub:a.title||''});});return out;}
+  async function save(next){if(busy)return;busy=true;try{var r=await call('set_route_apps',next);if(r&&r.ok!==false){if(typeof state!=='undefined'&&state){state.route_apps=r.route_apps||next;state.audio_apps=r.audio_apps||state.audio_apps;}if(typeof toast==='function')toast(T().saved);render();}}finally{busy=false;}}
+  function build(){if($('routeCard'))return true;var home=$('view-home'),main=home&&home.querySelector('.col-main'),target=main&&main.querySelector('.target-box');if(!target)return false;var card=document.createElement('div');card.id='routeCard';card.className='card route-card';card.innerHTML='<div class="route-top"><div><b id="routeTitle"></b><small id="routeHint"></small></div><button id="routeEdit" class="btn ghost"></button></div><div id="routeSelected" class="route-selected"></div><div id="routePicker" class="route-picker" hidden><div id="routeOptions" class="route-options"></div></div>';target.insertAdjacentElement('afterend',card);$('routeEdit').onclick=function(){var p=$('routePicker');p.hidden=!p.hidden;render();};return true;}
+  function render(){if(!build())return;var t=T(),cur=current(),picker=$('routePicker');$('routeTitle').textContent=t.title;$('routeHint').textContent=t.hint;$('routeEdit').textContent=picker.hidden?t.connect:t.done;var selected=$('routeSelected');selected.innerHTML=cur.length?cur.map(function(v){return '<span class="route-chip">'+(v==='*'?t.all:label(v))+'<button data-remove="'+v+'" aria-label="remove">×</button></span>';}).join(''):'<span class="route-empty">'+t.none+'</span>';selected.querySelectorAll('[data-remove]').forEach(function(b){b.onclick=function(){save(cur.filter(function(x){return x!==b.dataset.remove;}));};});var opts=options();$('routeOptions').innerHTML=opts.map(function(o){var on=cur.indexOf(o.v)>=0;return '<button class="route-option'+(on?' on':'')+'" data-v="'+o.v+'"><i>'+(on?'✓':'')+'</i><span><b>'+o.n+'</b>'+(o.sub?'<small>'+o.sub.replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];})+'</small>':'')+'</span></button>';}).join('');$('routeOptions').querySelectorAll('.route-option').forEach(function(b){b.onclick=function(){var v=b.dataset.v,next=cur.slice();if(v==='*')next=cur.indexOf('*')>=0?[]:['*'];else{next=next.filter(function(x){return x!=='*';});var i=next.indexOf(v);if(i>=0)next.splice(i,1);else next.push(v);}save(next);};});}
   var oldLang=window.applyLang;if(typeof oldLang==='function')window.applyLang=function(){var r=oldLang.apply(this,arguments);render();return r;};
   var oldSettings=window.renderSettings;if(typeof oldSettings==='function')window.renderSettings=function(){var r=oldSettings.apply(this,arguments);render();return r;};
   setInterval(function(){try{render();}catch(e){}},700);

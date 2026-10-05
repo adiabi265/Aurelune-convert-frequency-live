@@ -93,6 +93,13 @@ class Api:
         st['breath_t0'] = time.time()
         threading.Thread(target=self._routine_loop, daemon=True).start()
 
+    def _route_apps(self):
+        value = self._cfg.get('route_apps')
+        if isinstance(value, list):
+            return list(dict.fromkeys(str(x).strip().lower() for x in value if str(x).strip()))
+        legacy = str(self._cfg.get('route_app', '')).strip().lower()
+        return [] if legacy in ('', 'all') else [legacy]
+
     # ---------- info ----------
     @safe
     def get_state(self):
@@ -105,7 +112,7 @@ class Api:
             'out_choice': self._cfg.get('out_choice', 'auto'),
             'settings': self._engine.settings, 'ui': self._cfg.get('ui', {}),
             'auto_switch': winaudio.available(),
-            'route_app': self._cfg.get('route_app', 'all'), 'audio_apps': winaudio.list_apps(),
+            'route_apps': self._route_apps(), 'audio_apps': winaudio.list_apps(),
             'manual_in': self._cfg.get('manual_in'), 'device_mode': self._cfg.get('device_mode', 'auto'),
             'autostart': self.get_autostart(), 'power': bool(self._cfg.get('power', False)),
             'check': winaudio.cable_check(), 'log': LOG,
@@ -261,15 +268,16 @@ class Api:
                     self._cfg['real_out'] = real
                     winaudio.remember_real(real)
                     cable = winaudio.find_cable_output()
-                    route = self._cfg.get('route_app', 'all')
-                    if route != 'all' and sys.platform.startswith('win'):
-                        # Keep Windows on the normal speaker. Only the selected app is sent into VB-CABLE.
+                    routes = self._route_apps()
+                    if sys.platform.startswith('win') and '*' not in routes:
+                        # Windows stays on the normal speaker; only selected apps enter VB-CABLE.
                         cur = winaudio.get_default()
                         if cur and winaudio.is_virtual(cur['name']):
                             winaudio.set_default(real)
-                        self._app_routed = route
-                        if not cable or not winaudio.route_app(route, cable):
-                            log.info('selected app is not running yet: %s', route)
+                        self._app_routed = routes
+                        for route in routes:
+                            if not cable or not winaudio.route_app(route, cable):
+                                log.info('selected app is not running yet: %s', route)
                     elif cable and winaudio.set_default(cable):
                         self._switched = True
                     else:
@@ -291,7 +299,8 @@ class Api:
             try:
                 cable = winaudio.find_cable_output()
                 if cable:
-                    winaudio.route_app(self._app_routed, cable)
+                    for route in list(self._app_routed):
+                        winaudio.route_app(route, cable)
             except Exception as e:
                 log.warning('app route watchdog: %s', e)
             time.sleep(3)
@@ -333,10 +342,11 @@ class Api:
         with self._lock:
             self._watch_gen += 1
             if self._app_routed:
-                try:
-                    winaudio.route_app(self._app_routed, None)
-                except Exception:
-                    pass
+                for route in list(self._app_routed):
+                    try:
+                        winaudio.route_app(route, None)
+                    except Exception:
+                        pass
                 self._app_routed = None
             if self._switched and self._real_dev:
                 try:
@@ -394,18 +404,28 @@ class Api:
         return {'ok': True}
 
     @safe
-    def set_route_app(self, name):
-        name = (name or 'all').strip()
-        self._cfg['route_app'] = name
+    def set_route_apps(self, names):
+        if not isinstance(names, list):
+            names = [names] if names else []
+        clean = list(dict.fromkeys(str(x).strip().lower() for x in names if str(x).strip()))
+        if '*' in clean:
+            clean = ['*']
+        self._cfg['route_apps'] = clean
+        self._cfg.pop('route_app', None)
         save_cfg(self._cfg)
         if self._engine.running:
             self.power_off(remember=False)
             result = self.power_on()
         else:
             result = {'ok': True}
-        result['route_app'] = name
+        result['route_apps'] = clean
         result['audio_apps'] = winaudio.list_apps()
         return result
+
+    @safe
+    def set_route_app(self, name):
+        # Compatibility for older UI code.
+        return self.set_route_apps([name] if name and name != 'all' else [])
 
     @safe
     def set_devices(self, mode, in_name=None):
@@ -938,7 +958,7 @@ def start_tray(api):
         api._apply({'mod_on': not api._engine.settings.get('mod_on')})
 
     def quit_app(icon, item):
-        api.power_off(remember=False)
+        api.power_off()
         stop_tray()
         try:
             api._window.destroy()
@@ -1008,9 +1028,10 @@ def main():
     api = Api()
     minimized = '--minimized' in sys.argv
     if api._cfg.get('power'):
-        r = api.power_on()
-        log.info('auto power on: %s', r)
-    elif IS_WIN and winaudio.available():
+        api._cfg['power'] = False
+        save_cfg(api._cfg)
+        log.info('previous power state cleared; waiting for manual start')
+    if IS_WIN and winaudio.available():
         # never leave the user without sound: default still on CABLE after a crash -> switch back
         try:
             cur = winaudio.get_default()

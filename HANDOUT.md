@@ -4,7 +4,7 @@
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.19.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.20.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---
@@ -233,6 +233,8 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 - Hat noch **keine** Gehirnwellen-Schichten.
 
 ## 8. Versionsverlauf (Kurz)
+
+- **3.20.0** – Minimaler Live-Bildschirm; mehrere Apps parallel durch Aurelune routen; Einstellungen persistent; kein automatisches Einschalten nach Programmstart.
 
 - **3.19.0** – App-spezifisches Windows-Audio-Routing: Nur Spotify oder eine andere ausgewählte App läuft durch Aurelune; alle übrigen Programme bleiben auf den normalen Lautsprechern.
 
