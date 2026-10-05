@@ -1,3 +1,9 @@
+3.22.0
+- Allgemeine Quellen-Auswahl statt festem Spotify-Einstieg
+- Playlist-Import fuer YouTube Music, Spotify, Deezer und SoundCloud
+- Provider-spezifische URL-Pruefung und dauerhaft gespeicherte Importliste
+- Transparenter Status fuer noch benoetigte Provider-Verbindung und Vorab-Analyse
+
 3.21.0
 - Einheitlicher Spotify-artiger Player unten fuer Playlists und Brainwaves
 - Mix-Button mit allen aktiven Quellen sowie Optimal Mix und Auto-Mix wieder dauerhaft erreichbar

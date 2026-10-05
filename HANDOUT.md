@@ -1,3 +1,21 @@
+# Laufende Arbeit – Playlist-Import (3.22.0)
+
+## Nutzerwunsch
+- Im Playlist-Tab ein allgemeiner **„Quelle wählen“**-Bereich statt einer festen Spotify-Karte.
+- Quellen: **YouTube Music, Spotify, Deezer und SoundCloud**.
+- Ein **„Playlist importieren“**-Button nimmt einen Playlist-Link entgegen.
+- Gewünscht ist eine Analyse pro Track und eine vorberechnete Umwandlung auf die Zielfrequenz, nicht erst während der Wiedergabe.
+
+## Technische Wahrheit / Grenze
+- Ein fertiger Song besitzt nicht „eine exakte Hertz-Zahl“. Analysierbar sind Grundton-/Tonhöhenverteilung und die geschätzte Referenzstimmung (z. B. A4 nahe 440 Hz). Danach kann eine Offline-Kopie mit dem Verhältnis `Ziel-A4 / erkannte-A4` gerendert werden.
+- Spotify, YouTube Music, Deezer und SoundCloud geben vollständige geschützte Streams nicht als frei speicherbare Audiodateien heraus. Ohne offizielle OAuth-Verbindung, passende API-Berechtigungen und Download-/Nutzungsrecht darf und kann Aurelune die Songs nicht vorab herunterladen und neu rendern.
+- Deshalb wird zuerst die komplette Import-UX samt gespeicherten Quellen/Links/Jobs gebaut. Der echte Offline-Renderer ist für eigene bzw. ausdrücklich herunterladbare Audiodateien möglich. Bei geschützten Streaming-Quellen bleiben OAuth, Metadatenimport und Rechteprüfung als Backend-Schritt offen; es darf keine fertige Vorab-Umwandlung vorgetäuscht werden.
+
+## Aktueller Arbeitsstand
+- **Umgesetzt in 3.22.0:** allgemeine Quellen-Auswahl, Import-Dialog, URL-Prüfung für alle vier Dienste, dauerhaft gespeicherte Importliste, Ziel-Hz pro Import und klare Statusanzeige.
+- Dateien: `ui/v322.js`, `ui/v322.css`, eingebunden in `ui/index.html`.
+- **Noch offen:** offizielle Provider-OAuth-Apps/Client-IDs, vollständige Track-Metadaten samt Paginierung, Rechte-/Downloadprüfung, lokaler Analyse-/Render-Worker, Cache-Verwaltung, Fortschritt/Abbruch und Playback vorberechneter Dateien.
+- Beim nächsten Chat exakt hier weitermachen: zuerst Provider-Verbindungsmodell festlegen. Ohne Zugangsdaten sind nur Link-Import und persistente Job-Vorbereitung umgesetzt; noch keine Songs heruntergeladen oder vorgerendert.
 # Update 3.21.0
 
 - Ein fester Player unten steuert Playlists oder Brainwaves inklusive Lautstaerke und Fortschritt.
@@ -11,7 +29,7 @@
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.21.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.22.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---
