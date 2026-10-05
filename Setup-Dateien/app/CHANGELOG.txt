@@ -1,3 +1,8 @@
+3.19.0
+- App-spezifisches Audio-Routing: Spotify oder eine andere geöffnete App kann einzeln durch Aurelune laufen.
+- Alle übrigen Programme bleiben direkt auf den normalen Windows-Lautsprechern.
+- Spotify-Auswahl im Playlists-Tab aktiviert das Spotify-Routing automatisch.
+
 3.18.0
 - Ein gemeinsamer Playlists-Tab für Spotify, Aurelune-Playlists und Brainwave-Reisen; separate Meditation- und Wellness-Navigation entfernt.
 - Isochrone Beats stehen direkt auf Live bei den Brainwaves; der zweite Player erscheint nur, wenn eine Brainwave-Reise läuft.

@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 [StructLayout(LayoutKind.Sequential)]
@@ -82,9 +83,72 @@ interface IAudioEndpointVolume {
 [ComImport, Guid("870af99c-171d-4f9e-af0d-e63df40c2bc9")]
 class PolicyConfigClient { }
 
+[ComImport, Guid("AB3D4648-E242-459F-B02F-541C70306324"), InterfaceType(ComInterfaceType.InterfaceIsIInspectable)]
+interface IAudioPolicyConfigFactory {
+    [PreserveSig] int __incomplete__();
+    [PreserveSig] int SetPersistedDefaultAudioEndpoint(uint processId, int flow, int role, IntPtr deviceId);
+    [PreserveSig] int GetPersistedDefaultAudioEndpoint(uint processId, int flow, int role, out IntPtr deviceId);
+    [PreserveSig] int ClearAllPersistedApplicationDefaultEndpoints();
+}
+
 class Dev { public string Id; public string Name; public bool IsDefault; public IMMDevice Device; public int Flow; public int State; }
 
 static class Program {
+    [DllImport("combase.dll")] static extern int RoInitialize(int initType);
+    [DllImport("combase.dll")] static extern void RoUninitialize();
+    [DllImport("combase.dll", CharSet=CharSet.Unicode)] static extern int WindowsCreateString(string source, int length, out IntPtr value);
+    [DllImport("combase.dll")] static extern int WindowsDeleteString(IntPtr value);
+    [DllImport("combase.dll")] static extern int RoGetActivationFactory(IntPtr classId, ref Guid iid, out IntPtr factory);
+
+    static IAudioPolicyConfigFactory AudioPolicy() {
+        RoInitialize(1);
+        IntPtr cls = IntPtr.Zero, ptr = IntPtr.Zero;
+        string runtimeClass = "Windows.Media.Internal.AudioPolicyConfig";
+        int hr = WindowsCreateString(runtimeClass, runtimeClass.Length, out cls);
+        if (hr != 0) Marshal.ThrowExceptionForHR(hr);
+        try {
+            Guid iid = new Guid("AB3D4648-E242-459F-B02F-541C70306324");
+            hr = RoGetActivationFactory(cls, ref iid, out ptr);
+            if (hr != 0) Marshal.ThrowExceptionForHR(hr);
+            return (IAudioPolicyConfigFactory)Marshal.GetObjectForIUnknown(ptr);
+        } finally {
+            if (ptr != IntPtr.Zero) Marshal.Release(ptr);
+            WindowsDeleteString(cls);
+        }
+    }
+
+    static int RoutePid(int pid, string deviceId) {
+        var pc = AudioPolicy(); IntPtr dev = IntPtr.Zero; int hr = 0;
+        try {
+            if (!String.IsNullOrEmpty(deviceId)) {
+                hr = WindowsCreateString(deviceId, deviceId.Length, out dev);
+                if (hr != 0) return hr;
+            }
+            for (int role = 0; role < 3; role++) {
+                int r = pc.SetPersistedDefaultAudioEndpoint((uint)pid, 0, role, dev);
+                if (r != 0) hr = r;
+            }
+            return hr;
+        } finally {
+            if (dev != IntPtr.Zero) WindowsDeleteString(dev);
+            if (pc != null && Marshal.IsComObject(pc)) Marshal.ReleaseComObject(pc);
+            RoUninitialize();
+        }
+    }
+
+    static List<Process> FindProcesses(string query) {
+        var result = new List<Process>(); int pid;
+        foreach (Process p in Process.GetProcesses()) {
+            try {
+                bool hit = Int32.TryParse(query, out pid) ? p.Id == pid :
+                    String.Equals(p.ProcessName, query, StringComparison.OrdinalIgnoreCase) ||
+                    p.ProcessName.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    (!String.IsNullOrEmpty(p.MainWindowTitle) && p.MainWindowTitle.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0);
+                if (hit) result.Add(p); else p.Dispose();
+            } catch { p.Dispose(); }
+        }
+        return result;
+    }
     // Only the VB-Audio cable counts as "virtual" – SteelSeries Sonar, Nahimic, Voicemeeter etc. are valid main outputs.
     static bool IsVirtual(string name) {
         string n = name.ToLowerInvariant();
@@ -173,6 +237,26 @@ static class Program {
                 foreach (Dev d in list) Console.WriteLine(d.Id + "\t" + d.Name + "\t" + (d.IsDefault ? "1" : "0"));
                 return 0;
             }
+            if (cmd == "apps") {
+                foreach (Process p in Process.GetProcesses()) try {
+                    if (p.Id != Process.GetCurrentProcess().Id && p.MainWindowHandle != IntPtr.Zero && !String.IsNullOrEmpty(p.MainWindowTitle))
+                        Console.WriteLine(p.Id + "\t" + p.ProcessName + "\t" + p.MainWindowTitle.Replace('\t', ' '));
+                } catch { }
+                return 0;
+            }
+            if (cmd == "app-route" && args.Length > 2) {
+                Dev target = String.Equals(args[2], "default", StringComparison.OrdinalIgnoreCase) ? null : Find(list, args[2]);
+                if (target == null && !String.Equals(args[2], "default", StringComparison.OrdinalIgnoreCase)) { Console.Error.WriteLine("device not found"); return 2; }
+                var procs = FindProcesses(args[1]);
+                if (procs.Count == 0) { Console.Error.WriteLine("app not running"); return 7; }
+                int fails = 0;
+                foreach (Process p in procs) try {
+                    int hr = RoutePid(p.Id, target == null ? null : target.Id);
+                    Console.WriteLine((hr == 0 ? "ok" : "fail 0x" + hr.ToString("X8")) + "\t" + p.Id + "\t" + p.ProcessName);
+                    if (hr != 0) fails++;
+                } finally { p.Dispose(); }
+                return fails == 0 ? 0 : 8;
+            }
             if (cmd == "devices") {
                 // all endpoints in all states: flow, state(1 active,2 disabled,4 not present,8 unplugged), default, cable, id, name
                 for (int flow = 0; flow < 2; flow++)
@@ -254,7 +338,7 @@ static class Program {
                 Console.WriteLine(target.Name);
                 return Set(target.Id) == 0 ? 0 : 3;
             }
-            Console.Error.WriteLine("usage: AudioSwitch list | devices | set <id|name> | restore | enable <id> | enable-cable | cable-status | cable-format [rate] | cable-volume");
+            Console.Error.WriteLine("usage: AudioSwitch list | devices | apps | app-route <pid|name> <device|default> | set <id|name> | restore | enable <id> | enable-cable | cable-status | cable-format [rate] | cable-volume");
             return 1;
         } catch (Exception e) {
             Console.Error.WriteLine(e.Message);

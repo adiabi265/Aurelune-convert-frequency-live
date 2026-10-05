@@ -4,7 +4,7 @@
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.18.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.19.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---
@@ -233,6 +233,8 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 - Hat noch **keine** Gehirnwellen-Schichten.
 
 ## 8. Versionsverlauf (Kurz)
+
+- **3.19.0** – App-spezifisches Windows-Audio-Routing: Nur Spotify oder eine andere ausgewählte App läuft durch Aurelune; alle übrigen Programme bleiben auf den normalen Lautsprechern.
 
 - **3.18.0** – Ein Playlists-Tab bündelt Spotify, vorgefertigte Aurelune-Musik und Brainwave-Reisen. Wellness-Navigation entfernt; isochrone Beats liegen direkt auf Live bei den Brainwaves. Zielfrequenzen nach gewünschter Nutzung benannt.
 

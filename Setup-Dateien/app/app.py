@@ -80,6 +80,7 @@ class Api:
         self._lock = threading.RLock()
         self._real_dev = None
         self._switched = False
+        self._app_routed = None
         self._last_poll = time.time()
         self._window = None
         self._watch_gen = 0
@@ -104,6 +105,7 @@ class Api:
             'out_choice': self._cfg.get('out_choice', 'auto'),
             'settings': self._engine.settings, 'ui': self._cfg.get('ui', {}),
             'auto_switch': winaudio.available(),
+            'route_app': self._cfg.get('route_app', 'all'), 'audio_apps': winaudio.list_apps(),
             'manual_in': self._cfg.get('manual_in'), 'device_mode': self._cfg.get('device_mode', 'auto'),
             'autostart': self.get_autostart(), 'power': bool(self._cfg.get('power', False)),
             'check': winaudio.cable_check(), 'log': LOG,
@@ -259,19 +261,40 @@ class Api:
                     self._cfg['real_out'] = real
                     winaudio.remember_real(real)
                     cable = winaudio.find_cable_output()
-                    if cable and winaudio.set_default(cable):
+                    route = self._cfg.get('route_app', 'all')
+                    if route != 'all' and sys.platform.startswith('win'):
+                        # Keep Windows on the normal speaker. Only the selected app is sent into VB-CABLE.
+                        cur = winaudio.get_default()
+                        if cur and winaudio.is_virtual(cur['name']):
+                            winaudio.set_default(real)
+                        self._app_routed = route
+                        if not cable or not winaudio.route_app(route, cable):
+                            log.info('selected app is not running yet: %s', route)
+                    elif cable and winaudio.set_default(cable):
                         self._switched = True
                     else:
                         log.warning('could not switch default device to CABLE Input')
                 self._cfg['power'] = True
                 save_cfg(self._cfg)
-                if self._switched:
+                if self._switched or self._app_routed:
                     self._watch_gen += 1
-                    threading.Thread(target=self._watchdog, args=(self._watch_gen,), daemon=True).start()
+                    target = self._watchdog if self._switched else self._app_watchdog
+                    threading.Thread(target=target, args=(self._watch_gen,), daemon=True).start()
                 return {'ok': True, 'devices': list(self._engine.devices), 'switched': self._switched}
             except Exception:
                 self._engine.stop()
                 raise
+
+    def _app_watchdog(self, gen):
+        """Apply the selected per-app route when the app starts or spawns a new audio process."""
+        while gen == self._watch_gen and self._engine.running and self._app_routed:
+            try:
+                cable = winaudio.find_cable_output()
+                if cable:
+                    winaudio.route_app(self._app_routed, cable)
+            except Exception as e:
+                log.warning('app route watchdog: %s', e)
+            time.sleep(3)
 
     def _watchdog(self, gen):
         """Keeps the routing intact while Aurelune is on. Some tools (e.g. SteelSeries Sonar) set themselves
@@ -309,6 +332,12 @@ class Api:
     def power_off(self, remember=True):
         with self._lock:
             self._watch_gen += 1
+            if self._app_routed:
+                try:
+                    winaudio.route_app(self._app_routed, None)
+                except Exception:
+                    pass
+                self._app_routed = None
             if self._switched and self._real_dev:
                 try:
                     winaudio.set_default(self._real_dev)
@@ -363,6 +392,20 @@ class Api:
             self.power_off(remember=False)
             return self.power_on()
         return {'ok': True}
+
+    @safe
+    def set_route_app(self, name):
+        name = (name or 'all').strip()
+        self._cfg['route_app'] = name
+        save_cfg(self._cfg)
+        if self._engine.running:
+            self.power_off(remember=False)
+            result = self.power_on()
+        else:
+            result = {'ok': True}
+        result['route_app'] = name
+        result['audio_apps'] = winaudio.list_apps()
+        return result
 
     @safe
     def set_devices(self, mode, in_name=None):

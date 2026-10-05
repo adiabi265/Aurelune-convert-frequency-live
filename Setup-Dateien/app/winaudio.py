@@ -58,6 +58,26 @@ def list_outputs():
     return []
 
 
+def list_apps():
+    """Running desktop apps that can be selected for per-app routing (Windows)."""
+    if not IS_WIN or not os.path.exists(SWITCH):
+        return []
+    _, out = _run([SWITCH, 'apps'])
+    apps = []
+    for line in out.splitlines():
+        p = line.split('\t', 2)
+        if len(p) >= 3:
+            apps.append({'pid': int(p[0]), 'name': p[1], 'title': p[2]})
+    return apps
+
+
+def route_app(app, device=None):
+    """Route one running app to device; device=None restores the Windows default output."""
+    if not IS_WIN or not os.path.exists(SWITCH) or not app:
+        return False
+    target = device['id'] if isinstance(device, dict) else (device or 'default')
+    return _run([SWITCH, 'app-route', str(app), target])[0] == 0
+
 def get_default():
     for d in list_outputs():
         if d['default']:
