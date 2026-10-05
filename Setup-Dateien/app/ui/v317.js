@@ -14,8 +14,8 @@
   try {
     Object.assign(I18N.en, {
       mxBtn: 'Mix', mxTitle: 'Mix · all volumes', mxSub: 'Everything that plays right now - live level and volume.',
-      mxOpt: '✨ Optimal mix', mxOptH: 'Sets every added sound clearly under the music - nothing too loud, nothing lost.',
-      mxUndo: 'Undo', mxAuto: 'Auto-Mix', mxAutoH: 'keeps all added sounds together under the music (live)',
+      mxOpt: '✨ Optimal mix', mxOptH: 'Balances music, nature, brainwaves and isochronic beats individually - effective, but never too loud.',
+      mxUndo: 'Undo', mxAuto: 'Auto-Mix', mxAutoH: 'balances every active source automatically under the music (live)',
       mxGap: 'Distance to the music', mxG10: 'Subtle', mxG6: 'Normal', mxG3: 'Clear',
       mxAll: 'Show all sources', mxActive: 'Only active', mxNone: 'Nothing extra is playing - only the music.',
       mxOff: 'Aurelune is off - no live levels. The sliders still work.',
@@ -39,8 +39,8 @@
     });
     Object.assign(I18N.de, {
       mxBtn: 'Mix', mxTitle: 'Mix · alle Lautstärken', mxSub: 'Alles, was gerade läuft - Live-Pegel und Lautstärke.',
-      mxOpt: '✨ Optimal mischen', mxOptH: 'Stellt alle zugemischten Klänge deutlich unter die Musik - nichts zu laut, nichts geht unter.',
-      mxUndo: 'Rückgängig', mxAuto: 'Auto-Mix', mxAutoH: 'hält alle Zusatzklänge zusammen unter der Musik (live)',
+      mxOpt: '✨ Optimal mischen', mxOptH: 'Mischt Musik, Naturklänge, Brainwaves und isochrone Beats einzeln - wirksam, aber nie zu laut.',
+      mxUndo: 'Rückgängig', mxAuto: 'Auto-Mix', mxAutoH: 'mischt jede aktive Quelle automatisch unter die Musik (live)',
       mxGap: 'Abstand zur Musik', mxG10: 'Dezent', mxG6: 'Normal', mxG3: 'Deutlich',
       mxAll: 'Alle Quellen zeigen', mxActive: 'Nur aktive', mxNone: 'Gerade läuft nichts zusätzlich - nur die Musik.',
       mxOff: 'Aurelune ist aus - keine Live-Pegel. Die Regler funktionieren trotzdem.',

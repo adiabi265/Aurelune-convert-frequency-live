@@ -1,10 +1,17 @@
+# Update 3.21.0
+
+- Ein fester Player unten steuert Playlists oder Brainwaves inklusive Lautstaerke und Fortschritt.
+- Der Mix-Button zeigt alle aktiven Klangquellen. Optimal Mix und Auto-Mix balancieren Musik, Natur, Brainwaves und isochrone Beats einzeln.
+- Live zeigt alle wichtigen Solfeggio-Frequenzen zur direkten Auswahl.
+- Einstellungen und Lautstaerken bleiben nach einem Neustart erhalten.
+
 # Aurelune – Handout für neue Chats
 
 > **Lies das zuerst.** Dieses Dokument beschreibt Prinzip, Aufbau, Stand und Arbeitsweise des Projekts,
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.20.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.21.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---

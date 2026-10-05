@@ -481,6 +481,6 @@
   if (typeof oR === 'function') window.renderSettings = function () { var r = oR.apply(this, arguments); try { if ($('view-play')) { $('plTuned').textContent = t('plTuned', { hz: fmt(hzLabel(), hzLabel() % 1 ? 1 : 0) }); $('plTunedA4').textContent = t('plTunedA4', { a4: fmt(a4(), 1) }); } } catch (e) {} return r; };
   var oT = window.finishTimer;
   if (typeof oT === 'function') window.finishTimer = function () { if (playing) { pause(8); setTimeout(function () { toast(t('plSleepDone')); }, 3000); } return oT.apply(this, arguments); };
-  window.AurelunePlaylists = { play: go, pause: pause, toggle: toggle, catalogue: catalogue, _state: function () { return { playing: playing, cur: cur, voices: voices.length, a4: a4(), ctx: A && A.ctx, A: A }; } };
+  window.AurelunePlaylists = { play: go, pause: pause, toggle: toggle, catalogue: catalogue, setVolume: function (v) { P().mv = Math.max(0, Math.min(1, Number(v) || 0)); if (A) A.music.gain.setTargetAtTime(P().mv, A.ctx.currentTime, 0.05); save(); render(); }, _state: function () { return { playing: playing, cur: cur, voices: voices.length, a4: a4(), presetHz: hzLabel(), elapsed: playing ? Math.min(TRACK_LEN, (Date.now() - started) / 1000) : 0, duration: TRACK_LEN, volume: P().mv, ctx: A && A.ctx, A: A }; } };
   var n = 0, iv = setInterval(function () { try { render(); } catch (e) {} if (++n > 8) clearInterval(iv); }, 500);
 })();

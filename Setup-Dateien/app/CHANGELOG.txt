@@ -1,3 +1,9 @@
+3.21.0
+- Einheitlicher Spotify-artiger Player unten fuer Playlists und Brainwaves
+- Mix-Button mit allen aktiven Quellen sowie Optimal Mix und Auto-Mix wieder dauerhaft erreichbar
+- Alle wichtigen Solfeggio-Frequenzen direkt in der Live-Vorschau
+- Lautstaerke und Mix-Einstellungen werden gespeichert
+
 3.20.0
 - Live komplett aufgeräumt: eine ruhige Hauptspalte mit Kymatik, Start/Stopp, Zielfrequenz und verbundenen Apps.
 - Mehrere Audio-Apps gleichzeitig verbinden; Auswahl und alle Einstellungen bleiben nach Neustart erhalten.
