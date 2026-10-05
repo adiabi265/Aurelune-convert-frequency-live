@@ -4,7 +4,7 @@
 > damit ein neuer Chat (oder Entwickler) ohne Vorwissen direkt weitermachen kann.
 > Bei jeder neuen Version: Abschnitt **„Versionsverlauf“** und **„Offene Punkte“** mit aktualisieren.
 
-Stand: **Aurelune Studio 3.17.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
+Stand: **Aurelune Studio 3.18.0** · Repo: `adiabi265/Aurelune-convert-frequency-live` · Branch: `main`
 Besitzer: Adrian (spricht Deutsch, App-Texte DE + EN).
 
 ---
@@ -233,6 +233,8 @@ Die `Aurelune-Studio-Setup.exe` ist seit 3.13 ein **Online-Setup** (lädt immer 
 - Hat noch **keine** Gehirnwellen-Schichten.
 
 ## 8. Versionsverlauf (Kurz)
+
+- **3.18.0** – Ein Playlists-Tab bündelt Spotify, vorgefertigte Aurelune-Musik und Brainwave-Reisen. Wellness-Navigation entfernt; isochrone Beats liegen direkt auf Live bei den Brainwaves. Zielfrequenzen nach gewünschter Nutzung benannt.
 
 - **3.17.0** – „Mix“-Knopf in der Player-Leiste: alle Lautstärken mit Live-Pegeln, „✨ Optimal mischen“ + Rückgängig, Auto-Mix (Zusatzklänge bleiben unter der Musik, `mixer.py`); neue 3D-Kymatik mit 5 Ansichten (Platte, Wasser, Kugel, Mandala, Sand), Farben, Qualität, Drehen/Zoom, Live/feste Frequenz, Bild speichern.
 - **3.16.0** – UI-Redesign: Design-Tokens, ruhigere Flächen, ein Button-System, kompakte Live-Ansicht (Start-Button, Zielfrequenz-Box, Live-Messung mit Leerzustand, Gehirnwellen einklappbar), Frequenz-Filter, Playlists zweispaltig, Wellness- und Einstellungs-Unterreiter, Diagnose-Liste, DE/EN-Umschalter in der Seitenleiste, Barrierefreiheit (Fokus, reduzierte Bewegung).
